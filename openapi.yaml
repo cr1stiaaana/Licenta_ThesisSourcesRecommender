@@ -1,0 +1,636 @@
+openapi: 3.0.3
+info:
+  title: Hybrid Thesis Recommender API
+  description: |
+    REST API for an AI-powered academic research recommendation system that combines semantic search (FAISS), 
+    keyword matching (BM25), and multi-source web retrieval to provide relevant thesis sources.
+    
+    ## Features
+    - **Hybrid Retrieval**: Combines semantic embeddings with keyword matching
+    - **Multi-Source**: Integrates local corpus, Semantic Scholar, arXiv, and web search
+    - **User Feedback**: Rating system with optional feedback signal boosting
+    - **Authentication**: User registration, login, and saved items management
+    - **Bilingual**: Supports Romanian and English with automatic language detection
+    - **Content Verification**: Detects clickbait and low-quality sources
+    
+  version: 1.0.0
+  contact:
+    name: Cristiana
+    url: https://github.com/cr1stiaaana/Licenta_ThesisSourcesRecommender
+  license:
+    name: MIT
+    
+servers:
+  - url: http://localhost:5000
+    description: Development server
+  - url: http://127.0.0.1:5000
+    description: Local server
+
+tags:
+  - name: Recommendations
+    description: Hybrid retrieval and recommendation endpoints
+  - name: Feedback
+    description: User rating and feedback management
+  - name: Authentication
+    description: User authentication and session management
+  - name: Saved Items
+    description: User saved items management
+
+paths:
+  /recommend:
+    post:
+      tags:
+        - Recommendations
+      summary: Get hybrid recommendations
+      description: |
+        Retrieves relevant articles and web resources using hybrid retrieval combining:
+        - Semantic search (FAISS with sentence-transformers)
+        - Keyword matching (BM25)
+        - Academic APIs (Semantic Scholar, arXiv)
+        - Web search (DuckDuckGo)
+        
+        Supports pagination with independent offsets for articles and web resources.
+      operationId: getRecommendations
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - title
+              properties:
+                title:
+                  type: string
+                  minLength: 3
+                  maxLength: 500
+                  description: Thesis title (required, 3-500 characters)
+                  example: "Neural networks for natural language processing"
+                abstract:
+                  type: string
+                  description: Optional thesis abstract for improved accuracy
+                  example: "This thesis explores the application of deep learning..."
+                keywords:
+                  type: array
+                  items:
+                    type: string
+                  description: Optional keywords for enhanced retrieval
+                  example: ["machine learning", "NLP", "transformers"]
+                offset:
+                  type: integer
+                  minimum: 0
+                  default: 0
+                  description: Pagination offset (0-indexed)
+                  example: 0
+                type:
+                  type: string
+                  enum: [both, articles, web]
+                  default: both
+                  description: |
+                    Result type filter:
+                    - `both`: Return both articles and web resources (default)
+                    - `articles`: Return only articles
+                    - `web`: Return only web resources
+                  example: "both"
+      responses:
+        '200':
+          description: Successful retrieval
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RecommendResponse'
+        '422':
+          description: Invalid input (title validation failed)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "Query must be between 3 and 500 characters"
+        '500':
+          description: All retrievers unavailable
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "All article retrievers are unavailable."
+
+  /feedback:
+    post:
+      tags:
+        - Feedback
+      summary: Submit a rating
+      description: Submit a user rating (1-5 stars) for an article or web resource
+      operationId: submitFeedback
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - item_id
+                - query
+                - rating
+              properties:
+                item_id:
+                  type: string
+                  description: Unique identifier for the item (doi:... or url:...)
+                  example: "doi:10.1145/351240.351266"
+                query:
+                  type: string
+                  description: The original query text
+                  example: "machine learning"
+                rating:
+                  type: integer
+                  minimum: 1
+                  maximum: 5
+                  description: Rating from 1 (poor) to 5 (excellent)
+                  example: 5
+                session_id:
+                  type: string
+                  description: Optional session identifier for tracking user ratings
+                  example: "b8ba8da5-5b11-45b3-8dc1-135de4d37cf1"
+      responses:
+        '200':
+          description: Rating saved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Rating saved."
+        '422':
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "Rating must be between 1 and 5"
+        '503':
+          description: Feedback store unavailable
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+
+  /feedback/{item_id}:
+    get:
+      tags:
+        - Feedback
+      summary: Get ratings for an item
+      description: Retrieve aggregate ratings and user's rating for a specific item
+      operationId: getFeedback
+      parameters:
+        - name: item_id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Unique identifier for the item
+          example: "doi:10.1145/351240.351266"
+        - name: session_id
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Session ID to retrieve user's specific rating
+          example: "b8ba8da5-5b11-45b3-8dc1-135de4d37cf1"
+      responses:
+        '200':
+          description: Ratings retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FeedbackQueryResult'
+        '503':
+          description: Feedback store unavailable
+
+  /auth/register:
+    post:
+      tags:
+        - Authentication
+      summary: Register a new user
+      description: Create a new user account
+      operationId: register
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - username
+                - email
+                - password
+              properties:
+                username:
+                  type: string
+                  minLength: 3
+                  description: Username (minimum 3 characters)
+                  example: "john_doe"
+                email:
+                  type: string
+                  format: email
+                  description: Valid email address
+                  example: "john@example.com"
+                password:
+                  type: string
+                  minLength: 6
+                  format: password
+                  description: Password (minimum 6 characters)
+                  example: "securepass123"
+      responses:
+        '201':
+          description: Registration successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Registration successful"
+                  user:
+                    $ref: '#/components/schemas/UserInfo'
+        '400':
+          description: Registration failed (username/email already exists)
+        '422':
+          description: Invalid input
+
+  /auth/login:
+    post:
+      tags:
+        - Authentication
+      summary: Login
+      description: Authenticate user and create session
+      operationId: login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - username
+                - password
+              properties:
+                username:
+                  type: string
+                  example: "john_doe"
+                password:
+                  type: string
+                  format: password
+                  example: "securepass123"
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Login successful"
+                  user:
+                    $ref: '#/components/schemas/UserInfo'
+        '401':
+          description: Invalid credentials
+        '422':
+          description: Invalid input
+
+  /auth/logout:
+    post:
+      tags:
+        - Authentication
+      summary: Logout
+      description: Clear user session
+      operationId: logout
+      responses:
+        '200':
+          description: Logout successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Logout successful"
+
+  /auth/me:
+    get:
+      tags:
+        - Authentication
+      summary: Get current user
+      description: Retrieve currently authenticated user information
+      operationId: getCurrentUser
+      responses:
+        '200':
+          description: User information or null if not authenticated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  user:
+                    oneOf:
+                      - $ref: '#/components/schemas/UserInfo'
+                      - type: "null"
+
+  /saved:
+    get:
+      tags:
+        - Saved Items
+      summary: Get saved items
+      description: Retrieve all saved items for the authenticated user
+      operationId: getSavedItems
+      responses:
+        '200':
+          description: Saved items retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      type: object
+                      description: Saved article or web resource
+        '401':
+          description: Not authenticated
+
+    post:
+      tags:
+        - Saved Items
+      summary: Save an item
+      description: Save an article or web resource to user's collection
+      operationId: saveItem
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - item_id
+                - item_data
+              properties:
+                item_id:
+                  type: string
+                  description: Unique identifier for the item
+                  example: "doi:10.1145/351240.351266"
+                item_data:
+                  type: object
+                  description: Complete item data (article or web resource)
+      responses:
+        '200':
+          description: Item saved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Item saved"
+        '401':
+          description: Not authenticated
+        '422':
+          description: Invalid input
+
+  /saved/{item_id}:
+    delete:
+      tags:
+        - Saved Items
+      summary: Remove saved item
+      description: Remove an item from user's saved collection
+      operationId: unsaveItem
+      parameters:
+        - name: item_id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Unique identifier for the item
+          example: "doi:10.1145/351240.351266"
+      responses:
+        '200':
+          description: Item removed successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Item removed"
+        '401':
+          description: Not authenticated
+
+  /saved/{item_id}/check:
+    get:
+      tags:
+        - Saved Items
+      summary: Check if item is saved
+      description: Check whether a specific item is in user's saved collection
+      operationId: checkSaved
+      parameters:
+        - name: item_id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Unique identifier for the item
+      responses:
+        '200':
+          description: Check result
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  saved:
+                    type: boolean
+                    example: true
+
+components:
+  schemas:
+    RecommendResponse:
+      type: object
+      properties:
+        query_language:
+          type: string
+          enum: [ro, en]
+          description: Detected query language
+          example: "en"
+        articles:
+          type: array
+          items:
+            $ref: '#/components/schemas/ArticleRecommendation'
+        web_resources:
+          type: array
+          items:
+            $ref: '#/components/schemas/WebResourceRecommendation'
+        notices:
+          type: array
+          items:
+            type: string
+          description: System notices (e.g., retriever unavailable)
+          example: []
+        error:
+          type: string
+          description: Error message if request failed
+          
+    ArticleRecommendation:
+      type: object
+      properties:
+        resource_type:
+          type: string
+          enum: [article]
+          example: "article"
+        title:
+          type: string
+          example: "Attention Is All You Need"
+        authors:
+          type: array
+          items:
+            type: string
+          example: ["Vaswani, A.", "Shazeer, N.", "Parmar, N."]
+        year:
+          type: integer
+          nullable: true
+          example: 2017
+        abstract_snippet:
+          type: string
+          nullable: true
+          description: Truncated abstract (first 300 characters)
+          example: "The dominant sequence transduction models..."
+        doi:
+          type: string
+          nullable: true
+          example: "10.48550/arXiv.1706.03762"
+        url:
+          type: string
+          nullable: true
+          format: uri
+          example: "https://arxiv.org/abs/1706.03762"
+        keywords:
+          type: array
+          items:
+            type: string
+          example: ["transformers", "attention", "neural networks"]
+        score:
+          type: number
+          format: float
+          description: Relevance score (0.0-1.0)
+          example: 0.87
+        quality_warning:
+          type: string
+          nullable: true
+          description: Warning message if content quality is suspicious
+          example: "⚠ Verify content"
+        item_id:
+          type: string
+          description: Unique identifier (doi:... or url:...)
+          example: "doi:10.48550/arXiv.1706.03762"
+          
+    WebResourceRecommendation:
+      type: object
+      properties:
+        resource_type:
+          type: string
+          enum: [web]
+          example: "web"
+        title:
+          type: string
+          example: "Introduction to Neural Networks"
+        url:
+          type: string
+          format: uri
+          example: "https://example.com/neural-networks"
+        snippet:
+          type: string
+          description: Brief excerpt from the page
+          example: "A comprehensive guide to understanding neural networks..."
+        web_score:
+          type: number
+          format: float
+          description: Web search relevance score
+          example: 0.95
+        keywords:
+          type: array
+          items:
+            type: string
+          example: ["neural networks", "deep learning"]
+        quality_warning:
+          type: string
+          nullable: true
+          description: Warning message if content quality is suspicious
+        item_id:
+          type: string
+          description: Unique identifier (url:...)
+          example: "url:https://example.com/neural-networks"
+          
+    FeedbackQueryResult:
+      type: object
+      properties:
+        item_id:
+          type: string
+          example: "doi:10.1145/351240.351266"
+        rating_count:
+          type: integer
+          description: Total number of ratings
+          example: 42
+        user_rating:
+          type: integer
+          nullable: true
+          minimum: 1
+          maximum: 5
+          description: Current user's rating (if session_id provided)
+          example: 5
+        average_rating:
+          type: number
+          format: float
+          nullable: true
+          description: Average rating across all users
+          example: 4.3
+          
+    UserInfo:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        username:
+          type: string
+          example: "john_doe"
+        email:
+          type: string
+          format: email
+          example: "john@example.com"
+
+  securitySchemes:
+    sessionCookie:
+      type: apiKey
+      in: cookie
+      name: session
+      description: Session-based authentication using Flask sessions
+
+security:
+  - sessionCookie: []
