@@ -9,7 +9,7 @@
   --color-surface:      #ffffff;
   --color-surface-alt:  #faf5f0;
   --color-border:       #d6d9dc;
-  --color-border-focus: #f48024;
+  --color-border-focus: #c7410e;
 
   --color-text:         #242729;
   --color-text-muted:   #6a737c;
@@ -23,21 +23,21 @@
   --color-success-bg:   #d4edda;
   --color-warning:      #92400e;
   --color-warning-bg:   #fef3c7;
-  --color-warning-border:#f59e0b;
+  --color-warning-border:#c7410e;
   --color-error:        #d1383d;
   --color-error-bg:     #fee;
   --color-error-border: #d1383d;
 
   --color-score-high:   #5eba7d;
   --color-score-high-bg:#d4edda;
-  --color-score-mid:    #f48024;
+  --color-score-mid:    #c7410e;
   --color-score-mid-bg: #fef3c7;
   --color-score-low:    #6a737c;
   --color-score-low-bg: #f3f4f6;
 
-  --color-star-filled:  #f48024;
+  --color-star-filled:  #c7410e;
   --color-star-empty:   #d6d9dc;
-  --color-star-hover:   #f48024;
+  --color-star-hover:   #c7410e;
 
   --color-article-badge:#0077cc;
   --color-article-badge-bg:#e1ecf4;
@@ -846,7 +846,7 @@ a:focus-visible {
 }
 
 .modal-content {
-  background: white;
+  background: var(--color-surface);
   border-radius: 8px;
   max-width: 900px;
   width: 90%;
@@ -860,12 +860,13 @@ a:focus-visible {
   justify-content: space-between;
   align-items: center;
   padding: 1.5rem;
-  border-bottom: 1px solid #e0e0e0;
+  border-bottom: 1px solid var(--color-border);
 }
 
 .modal-header h2 {
   margin: 0;
   font-size: 1.5rem;
+  color: var(--color-text);
 }
 
 .modal-close {
@@ -873,7 +874,7 @@ a:focus-visible {
   border: none;
   font-size: 2rem;
   cursor: pointer;
-  color: #666;
+  color: var(--color-text-muted);
   line-height: 1;
   padding: 0;
   width: 2rem;
@@ -881,11 +882,12 @@ a:focus-visible {
 }
 
 .modal-close:hover {
-  color: #000;
+  color: var(--color-text);
 }
 
 .modal-body {
   padding: 1.5rem;
+  color: var(--color-text);
 }
 
 .saved-empty {
@@ -987,4 +989,166 @@ a:focus-visible {
 
 .tab-panel[hidden] {
   display: none;
+}
+
+
+/* ── Authentication UI ──────────────────────────────────────────── */
+
+.btn-auth,
+.btn-logout {
+  padding: 0.5rem 1rem;
+  background: var(--color-primary);
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 500;
+  transition: background 0.2s;
+}
+
+.btn-auth:hover,
+.btn-logout:hover {
+  background: var(--color-primary-dark);
+}
+
+.user-info {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.username {
+  font-weight: 500;
+  color: var(--color-text);
+}
+
+.auth-modal-content {
+  max-width: 400px;
+}
+
+.auth-modal-content .modal-header h2 {
+  color: var(--color-text);
+}
+
+.auth-modal-content .modal-body {
+  color: var(--color-text);
+}
+
+.auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.form-group label {
+  font-weight: 500;
+  color: var(--color-text);
+}
+
+.form-group input {
+  padding: 0.75rem;
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  font-size: 1rem;
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+
+.form-group input:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px rgba(199, 65, 14, 0.1);
+}
+
+.auth-error {
+  color: #d32f2f;
+  font-size: 0.9rem;
+  min-height: 1.2rem;
+}
+
+.btn-primary {
+  padding: 0.75rem;
+  background: var(--color-primary);
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 1rem;
+  font-weight: 500;
+  transition: background 0.2s;
+}
+
+.btn-primary:hover {
+  background: var(--color-primary-dark);
+}
+
+.auth-switch {
+  text-align: center;
+  margin-top: 0.5rem;
+  font-size: 0.9rem;
+  color: var(--color-text);
+}
+
+.auth-switch a {
+  color: var(--color-primary);
+  text-decoration: none;
+  font-weight: 500;
+  margin-left: 0.25rem;
+}
+
+.auth-switch a:hover {
+  text-decoration: underline;
+}
+
+/* Dark mode adjustments for auth */
+[data-theme="dark"] .modal-content {
+  background: #2d2d2d;
+  color: var(--color-text);
+}
+
+[data-theme="dark"] .modal-header {
+  border-bottom-color: #444;
+}
+
+[data-theme="dark"] .modal-header h2 {
+  color: var(--color-text);
+}
+
+[data-theme="dark"] .modal-body {
+  color: var(--color-text);
+}
+
+[data-theme="dark"] .form-group label {
+  color: var(--color-text);
+}
+
+[data-theme="dark"] .form-group input {
+  background: #3a3a3a;
+  border-color: #555;
+  color: var(--color-text);
+}
+
+[data-theme="dark"] .form-group input:focus {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px rgba(244, 128, 36, 0.2);
+  background: #404040;
+}
+
+[data-theme="dark"] .auth-switch {
+  color: var(--color-text);
+}
+
+[data-theme="dark"] .modal-close {
+  color: #999;
+}
+
+[data-theme="dark"] .modal-close:hover {
+  color: var(--color-text);
 }

@@ -131,6 +131,18 @@ const STRINGS = {
     saved_items:       'Salvate',
     no_saved_items:    'Nu aveți articole sau resurse salvate.',
     view_saved:        'Vezi salvate',
+    btn_login:         'Autentificare',
+    btn_register:      'Înregistrare',
+    btn_logout:        'Deconectare',
+    login_title:       'Autentificare',
+    register_title:    'Înregistrare',
+    label_username:    'Nume utilizator',
+    label_email:       'Email',
+    label_password:    'Parolă',
+    no_account:        'Nu ai cont?',
+    have_account:      'Ai deja cont?',
+    register_link:     'Înregistrează-te',
+    login_link:        'Autentifică-te',
   },
   en: {
     page_title:        'Thesis Sources Recommender',
@@ -172,6 +184,18 @@ const STRINGS = {
     saved_items:       'Saved',
     no_saved_items:    'You have no saved articles or resources.',
     view_saved:        'View saved',
+    btn_login:         'Login',
+    btn_register:      'Register',
+    btn_logout:        'Logout',
+    login_title:       'Login',
+    register_title:    'Register',
+    label_username:    'Username',
+    label_email:       'Email',
+    label_password:    'Password',
+    no_account:        'Don\'t have an account?',
+    have_account:      'Already have an account?',
+    register_link:     'Register',
+    login_link:        'Login',
   },
 };
 
@@ -212,37 +236,129 @@ const panelWeb         = document.getElementById('panel-web');
 const articlesCount    = document.getElementById('articles-count');
 const webCount         = document.getElementById('web-count');
 
-/* ── Saved items (localStorage) ────────────────────────────── */
+/* ── Authentication state ───────────────────────────────────── */
 
-const SAVED_ITEMS_KEY = 'thesis_recommender_saved_items';
+let currentUser = null; // { id, username, email } or null
 
-function getSavedItems() {
+async function checkAuthStatus() {
   try {
-    const json = localStorage.getItem(SAVED_ITEMS_KEY);
-    return json ? JSON.parse(json) : [];
-  } catch {
-    return [];
+    const resp = await fetch('/auth/me');
+    if (resp.ok) {
+      const data = await resp.json();
+      currentUser = data.user;
+      updateAuthUI();
+      return currentUser;
+    }
+  } catch (err) {
+    console.warn('Auth check failed:', err);
+  }
+  currentUser = null;
+  updateAuthUI();
+  return null;
+}
+
+function updateAuthUI() {
+  const authBtn = document.getElementById('auth-btn');
+  const userInfo = document.getElementById('user-info');
+  const username = document.getElementById('username-display');
+  const logoutBtn = document.getElementById('logout-btn');
+  
+  if (currentUser) {
+    // User is logged in
+    if (authBtn) authBtn.hidden = true;
+    if (userInfo) {
+      userInfo.hidden = false;
+      if (username) username.textContent = currentUser.username;
+    }
+  } else {
+    // User is not logged in
+    if (authBtn) authBtn.hidden = false;
+    if (userInfo) userInfo.hidden = true;
   }
 }
 
-function saveItem(item) {
-  const saved = getSavedItems();
-  const itemId = deriveItemId(item);
-  // Avoid duplicates
-  if (saved.some(s => deriveItemId(s) === itemId)) return;
-  saved.push(item);
-  localStorage.setItem(SAVED_ITEMS_KEY, JSON.stringify(saved));
+/* ── Saved items (server + localStorage fallback) ──────────── */
+
+const SAVED_ITEMS_KEY = 'thesis_recommender_saved_items';
+
+async function getSavedItems() {
+  if (currentUser) {
+    // Fetch from server
+    try {
+      const resp = await fetch('/saved');
+      if (resp.ok) {
+        const data = await resp.json();
+        return data.items || [];
+      }
+    } catch (err) {
+      console.warn('Failed to fetch saved items:', err);
+    }
+    return [];
+  } else {
+    // Use localStorage for guests
+    try {
+      const json = localStorage.getItem(SAVED_ITEMS_KEY);
+      return json ? JSON.parse(json) : [];
+    } catch {
+      return [];
+    }
+  }
 }
 
-function unsaveItem(item) {
-  const saved = getSavedItems();
+async function saveItem(item) {
   const itemId = deriveItemId(item);
-  const filtered = saved.filter(s => deriveItemId(s) !== itemId);
-  localStorage.setItem(SAVED_ITEMS_KEY, JSON.stringify(filtered));
+  
+  if (currentUser) {
+    // Save to server
+    try {
+      const resp = await fetch('/saved', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          item_id: itemId,
+          item_data: item
+        })
+      });
+      if (!resp.ok) {
+        console.warn('Failed to save item to server');
+      }
+    } catch (err) {
+      console.warn('Error saving item:', err);
+    }
+  } else {
+    // Save to localStorage for guests
+    const saved = await getSavedItems();
+    if (saved.some(s => deriveItemId(s) === itemId)) return;
+    saved.push(item);
+    localStorage.setItem(SAVED_ITEMS_KEY, JSON.stringify(saved));
+  }
 }
 
-function isItemSaved(item) {
-  const saved = getSavedItems();
+async function unsaveItem(item) {
+  const itemId = deriveItemId(item);
+  
+  if (currentUser) {
+    // Remove from server
+    try {
+      const resp = await fetch(`/saved/${encodeURIComponent(itemId)}`, {
+        method: 'DELETE'
+      });
+      if (!resp.ok) {
+        console.warn('Failed to remove item from server');
+      }
+    } catch (err) {
+      console.warn('Error removing item:', err);
+    }
+  } else {
+    // Remove from localStorage for guests
+    const saved = await getSavedItems();
+    const filtered = saved.filter(s => deriveItemId(s) !== itemId);
+    localStorage.setItem(SAVED_ITEMS_KEY, JSON.stringify(filtered));
+  }
+}
+
+async function isItemSaved(item) {
+  const saved = await getSavedItems();
   const itemId = deriveItemId(item);
   return saved.some(s => deriveItemId(s) === itemId);
 }
@@ -295,21 +411,22 @@ function buildSaveButton(card, item) {
   btn.type = 'button';
   btn.className = 'btn-save';
   
-  function updateButton() {
-    const saved = isItemSaved(item);
+  async function updateButton() {
+    const saved = await isItemSaved(item);
     btn.textContent = saved ? t('btn_unsave') : t('btn_save');
     btn.classList.toggle('saved', saved);
   }
   
   updateButton();
   
-  btn.addEventListener('click', () => {
-    if (isItemSaved(item)) {
-      unsaveItem(item);
+  btn.addEventListener('click', async () => {
+    const saved = await isItemSaved(item);
+    if (saved) {
+      await unsaveItem(item);
     } else {
-      saveItem(item);
+      await saveItem(item);
     }
-    updateButton();
+    await updateButton();
   });
   
   card.appendChild(btn);
@@ -319,8 +436,8 @@ function buildSaveButton(card, item) {
 /* ── Saved items modal ──────────────────────────────────────── */
 
 if (savedBtn && savedModal && savedModalClose && savedList) {
-  savedBtn.addEventListener('click', () => {
-    renderSavedItems();
+  savedBtn.addEventListener('click', async () => {
+    await renderSavedItems();
     savedModal.hidden = false;
   });
   
@@ -336,11 +453,11 @@ if (savedBtn && savedModal && savedModalClose && savedList) {
   });
 }
 
-function renderSavedItems() {
+async function renderSavedItems() {
   if (!savedList) return;
   
   savedList.innerHTML = '';
-  const saved = getSavedItems();
+  const saved = await getSavedItems();
   
   if (saved.length === 0) {
     const empty = document.createElement('p');
@@ -1128,3 +1245,164 @@ if (webLoadMore) {
     await submitQuery(displayedWebResources);
   });
 }
+
+/* ── Authentication modals ──────────────────────────────────── */
+
+const authBtn = document.getElementById('auth-btn');
+const authModal = document.getElementById('auth-modal');
+const authModalClose = document.getElementById('auth-modal-close');
+const loginForm = document.getElementById('login-form');
+const registerForm = document.getElementById('register-form');
+const showRegisterLink = document.getElementById('show-register');
+const showLoginLink = document.getElementById('show-login');
+const logoutBtn = document.getElementById('logout-btn');
+
+if (authBtn && authModal) {
+  authBtn.addEventListener('click', () => {
+    authModal.hidden = false;
+    showLoginForm();
+  });
+}
+
+if (authModalClose) {
+  authModalClose.addEventListener('click', () => {
+    authModal.hidden = true;
+  });
+}
+
+if (authModal) {
+  authModal.addEventListener('click', (e) => {
+    if (e.target === authModal) {
+      authModal.hidden = true;
+    }
+  });
+}
+
+function showLoginForm() {
+  if (loginForm) loginForm.hidden = false;
+  if (registerForm) registerForm.hidden = true;
+}
+
+function showRegisterForm() {
+  if (loginForm) loginForm.hidden = true;
+  if (registerForm) registerForm.hidden = false;
+}
+
+if (showRegisterLink) {
+  showRegisterLink.addEventListener('click', (e) => {
+    e.preventDefault();
+    showRegisterForm();
+  });
+}
+
+if (showLoginLink) {
+  showLoginLink.addEventListener('click', (e) => {
+    e.preventDefault();
+    showLoginForm();
+  });
+}
+
+if (loginForm) {
+  loginForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const username = document.getElementById('login-username').value.trim();
+    const password = document.getElementById('login-password').value;
+    const errorEl = document.getElementById('login-error');
+    
+    try {
+      const resp = await fetch('/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password })
+      });
+      
+      const data = await resp.json();
+      
+      if (resp.ok) {
+        currentUser = data.user;
+        updateAuthUI();
+        authModal.hidden = true;
+        loginForm.reset();
+        if (errorEl) errorEl.textContent = '';
+        
+        // Migrate localStorage saved items to server
+        await migrateSavedItems();
+      } else {
+        if (errorEl) errorEl.textContent = data.error || 'Login failed';
+      }
+    } catch (err) {
+      if (errorEl) errorEl.textContent = 'Network error';
+    }
+  });
+}
+
+if (registerForm) {
+  registerForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const username = document.getElementById('register-username').value.trim();
+    const email = document.getElementById('register-email').value.trim();
+    const password = document.getElementById('register-password').value;
+    const errorEl = document.getElementById('register-error');
+    
+    try {
+      const resp = await fetch('/auth/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, email, password })
+      });
+      
+      const data = await resp.json();
+      
+      if (resp.ok) {
+        currentUser = data.user;
+        updateAuthUI();
+        authModal.hidden = true;
+        registerForm.reset();
+        if (errorEl) errorEl.textContent = '';
+        
+        // Migrate localStorage saved items to server
+        await migrateSavedItems();
+      } else {
+        if (errorEl) errorEl.textContent = data.error || 'Registration failed';
+      }
+    } catch (err) {
+      if (errorEl) errorEl.textContent = 'Network error';
+    }
+  });
+}
+
+if (logoutBtn) {
+  logoutBtn.addEventListener('click', async () => {
+    try {
+      await fetch('/auth/logout', { method: 'POST' });
+      currentUser = null;
+      updateAuthUI();
+    } catch (err) {
+      console.warn('Logout error:', err);
+    }
+  });
+}
+
+// Migrate localStorage saved items to server after login
+async function migrateSavedItems() {
+  try {
+    const json = localStorage.getItem(SAVED_ITEMS_KEY);
+    if (!json) return;
+    
+    const localItems = JSON.parse(json);
+    if (localItems.length === 0) return;
+    
+    // Save each item to server
+    for (const item of localItems) {
+      await saveItem(item);
+    }
+    
+    // Clear localStorage after migration
+    localStorage.removeItem(SAVED_ITEMS_KEY);
+  } catch (err) {
+    console.warn('Failed to migrate saved items:', err);
+  }
+}
+
+// Check auth status on page load
+checkAuthStatus();

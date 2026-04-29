@@ -24,6 +24,26 @@
           <span data-i18n="view_saved">Vezi salvate</span>
           <span class="saved-count" id="saved-count"></span>
         </button>
+        
+        <!-- Authentication UI -->
+        <button
+          id="auth-btn"
+          class="btn-auth"
+          data-i18n="btn_login"
+        >
+          Autentificare
+        </button>
+        <div id="user-info" class="user-info" hidden>
+          <span id="username-display" class="username"></span>
+          <button
+            id="logout-btn"
+            class="btn-logout"
+            data-i18n="btn_logout"
+          >
+            Deconectare
+          </button>
+        </div>
+        
         <button
           id="lang-toggle"
           class="lang-toggle"
@@ -255,6 +275,89 @@
       </div>
       <div class="modal-body">
         <div id="saved-list" class="results-list" role="list"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Authentication modal ───────────────────────────────────────── -->
+  <div id="auth-modal" class="modal" hidden role="dialog" aria-labelledby="auth-modal-title">
+    <div class="modal-content auth-modal-content">
+      <div class="modal-header">
+        <h2 id="auth-modal-title" data-i18n="login_title">Autentificare</h2>
+        <button id="auth-modal-close" class="modal-close" aria-label="Close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <!-- Login Form -->
+        <form id="login-form" class="auth-form">
+          <div class="form-group">
+            <label for="login-username" data-i18n="label_username">Nume utilizator</label>
+            <input
+              type="text"
+              id="login-username"
+              name="username"
+              required
+              autocomplete="username"
+            />
+          </div>
+          <div class="form-group">
+            <label for="login-password" data-i18n="label_password">Parolă</label>
+            <input
+              type="password"
+              id="login-password"
+              name="password"
+              required
+              autocomplete="current-password"
+            />
+          </div>
+          <div id="login-error" class="auth-error"></div>
+          <button type="submit" class="btn-primary" data-i18n="btn_login">Autentificare</button>
+          <p class="auth-switch">
+            <span data-i18n="no_account">Nu ai cont?</span>
+            <a href="#" id="show-register" data-i18n="register_link">Înregistrează-te</a>
+          </p>
+        </form>
+
+        <!-- Register Form -->
+        <form id="register-form" class="auth-form" hidden>
+          <div class="form-group">
+            <label for="register-username" data-i18n="label_username">Nume utilizator</label>
+            <input
+              type="text"
+              id="register-username"
+              name="username"
+              required
+              minlength="3"
+              autocomplete="username"
+            />
+          </div>
+          <div class="form-group">
+            <label for="register-email" data-i18n="label_email">Email</label>
+            <input
+              type="email"
+              id="register-email"
+              name="email"
+              required
+              autocomplete="email"
+            />
+          </div>
+          <div class="form-group">
+            <label for="register-password" data-i18n="label_password">Parolă</label>
+            <input
+              type="password"
+              id="register-password"
+              name="password"
+              required
+              minlength="6"
+              autocomplete="new-password"
+            />
+          </div>
+          <div id="register-error" class="auth-error"></div>
+          <button type="submit" class="btn-primary" data-i18n="btn_register">Înregistrare</button>
+          <p class="auth-switch">
+            <span data-i18n="have_account">Ai deja cont?</span>
+            <a href="#" id="show-login" data-i18n="login_link">Autentifică-te</a>
+          </p>
+        </form>
       </div>
     </div>
   </div>
