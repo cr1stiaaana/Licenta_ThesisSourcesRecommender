@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title data-i18n="page_title">Thesis Sources Recommender</title>
+  <link rel="icon" type="image/png" href="/static/tsc logo.png" />
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+  <!-- ── Header ─────────────────────────────────────────────────────── -->
+  <header class="site-header">
+    <div class="header-inner">
+      <div class="site-branding">
+        <img src="/static/tsc logo.png" alt="TSC Logo" class="site-logo" />
+        <h1 class="site-title" data-i18n="site_title">Thesis Sources Recommender</h1>
+      </div>
+      <div class="header-actions">
+        <button
+          id="saved-btn"
+          class="btn-saved"
+          aria-label="View saved items"
+        >
+          <span data-i18n="view_saved">Vezi salvate</span>
+          <span class="saved-count" id="saved-count"></span>
+        </button>
+        <button
+          id="lang-toggle"
+          class="lang-toggle"
+          aria-label="Switch language / Schimbă limba"
+        >
+          <span class="lang-option" data-lang="ro">RO</span>
+          <span class="lang-separator">|</span>
+          <span class="lang-option active" data-lang="en">EN</span>
+        </button>
+        <button
+          id="theme-toggle"
+          class="theme-toggle"
+          aria-label="Toggle dark mode"
+          title="Toggle dark mode"
+        >
+          <span class="theme-icon">🌙</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- ── Main content (two-column layout) ──────────────────────────── -->
+  <main class="main-content two-column-layout">
+
+    <!-- Left column: Query form (sticky) -->
+    <aside class="left-column">
+      <section class="form-section" aria-labelledby="form-heading">
+        <h2 id="form-heading" class="form-heading" data-i18n="form_heading">
+          Introduceți titlul tezei
+        </h2>
+
+        <form id="query-form" novalidate>
+          <!-- Thesis title (required) -->
+          <div class="field-group">
+            <label for="title-input" class="field-label">
+              <span data-i18n="label_title">Titlul tezei</span>
+              <span class="required-mark" aria-hidden="true">*</span>
+            </label>
+            <input
+              id="title-input"
+              name="title"
+              type="text"
+              class="field-input"
+              required
+              minlength="3"
+              maxlength="500"
+              autocomplete="off"
+              data-i18n-placeholder="placeholder_title"
+              placeholder="ex. Rețele neuronale pentru procesarea limbajului natural"
+              aria-required="true"
+              aria-describedby="title-hint"
+            />
+            <span id="title-hint" class="field-hint" data-i18n="hint_title">
+              Minim 3 caractere, maxim 500.
+            </span>
+          </div>
+
+          <!-- Abstract (optional) -->
+          <div class="field-group">
+            <label for="abstract-input" class="field-label">
+              <span data-i18n="label_abstract">Rezumat</span>
+              <span class="optional-mark" data-i18n="optional">(opțional)</span>
+            </label>
+            <textarea
+              id="abstract-input"
+              name="abstract"
+              class="field-textarea"
+              rows="4"
+              data-i18n-placeholder="placeholder_abstract"
+              placeholder="Introduceți rezumatul tezei..."
+              aria-describedby="abstract-hint"
+            ></textarea>
+            <span id="abstract-hint" class="field-hint" data-i18n="hint_abstract">
+              Adăugați rezumatul pentru rezultate mai precise.
+            </span>
+          </div>
+
+          <!-- Keywords (optional) -->
+          <div class="field-group">
+            <label for="keywords-input" class="field-label">
+              <span data-i18n="label_keywords">Cuvinte cheie</span>
+              <span class="optional-mark" data-i18n="optional">(opțional)</span>
+            </label>
+            <input
+              id="keywords-input"
+              name="keywords"
+              type="text"
+              class="field-input"
+              data-i18n-placeholder="placeholder_keywords"
+              placeholder="ex. machine learning, NLP, transformers"
+              aria-describedby="keywords-hint"
+            />
+            <span id="keywords-hint" class="field-hint" data-i18n="hint_keywords">
+              Separați cuvintele cheie prin virgulă.
+            </span>
+          </div>
+
+          <!-- Submit -->
+          <div class="form-actions">
+            <button
+              id="submit-btn"
+              type="submit"
+              class="btn btn-primary"
+              aria-label="Caută recomandări"
+            >
+              <span class="btn-icon" aria-hidden="true">🔍</span>
+              <span data-i18n="btn_submit">Caută</span>
+            </button>
+          </div>
+        </form>
+      </section>
+    </aside>
+
+    <!-- Right column: Results with tabs -->
+    <div class="right-column">
+      
+      <!-- Error message container (hidden by default) -->
+      <div
+        id="error-container"
+        class="error-container"
+        role="alert"
+        aria-live="assertive"
+        hidden
+      >
+        <span class="error-icon" aria-hidden="true">⚠</span>
+        <span id="error-message" class="error-message"></span>
+      </div>
+
+      <!-- Loading spinner (hidden by default) -->
+      <div
+        id="loading-spinner"
+        class="loading-spinner"
+        role="status"
+        aria-live="polite"
+        hidden
+      >
+        <div class="spinner" aria-hidden="true"></div>
+        <span class="spinner-label" data-i18n="loading">Se încarcă...</span>
+      </div>
+
+      <!-- Notices container -->
+      <div
+        id="notices-container"
+        class="notices-container"
+        role="status"
+        aria-live="polite"
+        hidden
+      ></div>
+
+      <!-- ── Results with tabs ──────────────────────────────────────── -->
+      <div id="results-wrapper" hidden>
+
+        <!-- Tab navigation -->
+        <div class="tabs" role="tablist">
+          <button
+            type="button"
+            id="tab-articles"
+            class="tab active"
+            role="tab"
+            aria-selected="true"
+            aria-controls="panel-articles"
+          >
+            <span data-i18n="heading_articles">Articole</span>
+            <span class="tab-count" id="articles-count"></span>
+          </button>
+          <button
+            type="button"
+            id="tab-web"
+            class="tab"
+            role="tab"
+            aria-selected="false"
+            aria-controls="panel-web"
+          >
+            <span data-i18n="heading_web">Resurse Web</span>
+            <span class="tab-count" id="web-count"></span>
+          </button>
+        </div>
+
+        <!-- Tab panels -->
+        <div class="tab-panels">
+          
+          <!-- Articles panel -->
+          <section
+            id="panel-articles"
+            class="tab-panel"
+            role="tabpanel"
+            aria-labelledby="tab-articles"
+          >
+            <div id="articles-list" class="results-list" role="list"></div>
+            <p id="articles-empty" class="empty-message" hidden data-i18n="no_articles">
+              Nu au fost găsite articole suficient de relevante.
+            </p>
+            <button id="articles-load-more" class="btn btn-load-more" hidden>
+              <span data-i18n="btn_load_more">Încarcă mai multe</span>
+            </button>
+          </section>
+
+          <!-- Web Resources panel -->
+          <section
+            id="panel-web"
+            class="tab-panel"
+            role="tabpanel"
+            aria-labelledby="tab-web"
+            hidden
+          >
+            <div id="web-list" class="results-list" role="list"></div>
+            <p id="web-empty" class="empty-message" hidden data-i18n="no_web">
+              Nu au fost găsite resurse web suficient de relevante.
+            </p>
+            <button id="web-load-more" class="btn btn-load-more" hidden>
+              <span data-i18n="btn_load_more">Încarcă mai multe</span>
+            </button>
+          </section>
+
+        </div><!-- /tab-panels -->
+
+      </div><!-- /results-wrapper -->
+
+    </div><!-- /right-column -->
+
+  </main>
+
+  <!-- ── Saved items modal ──────────────────────────────────────────── -->
+  <div id="saved-modal" class="modal" hidden role="dialog" aria-labelledby="saved-modal-title">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2 id="saved-modal-title" data-i18n="saved_items">Salvate</h2>
+        <button id="saved-modal-close" class="modal-close" aria-label="Close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div id="saved-list" class="results-list" role="list"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Footer ─────────────────────────────────────────────────────── -->
+  <footer class="site-footer">
+    <p class="footer-text" data-i18n="footer_text">
+      Thesis Sources Recommender &mdash; Universitate
+    </p>
+  </footer>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>

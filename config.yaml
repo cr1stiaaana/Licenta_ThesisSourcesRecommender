@@ -1,0 +1,64 @@
+# Hybrid Thesis Recommender — default configuration
+# All values here match the AppConfig dataclass defaults.
+# Edit this file to tune the system; changes are hot-reloaded automatically.
+
+# ── Retrieval weights ──────────────────────────────────────────────────────
+# Must be in [0.0, 1.0]
+semantic_weight: 0.6
+keyword_weight: 0.4
+
+# ── Top-K limits ───────────────────────────────────────────────────────────
+# All must be >= 1
+article_top_k: 5
+web_top_k: 5
+semantic_top_k: 20
+keyword_top_k: 20
+
+# ── Minimum score thresholds ───────────────────────────────────────────────
+min_article_score: 0.001
+min_web_score: 0.1
+
+# ── Embedding model ────────────────────────────────────────────────────────
+embedding_model: "paraphrase-multilingual-mpnet-base-v2"
+
+# ── Storage paths ──────────────────────────────────────────────────────────
+vector_store_path: "data/faiss.index"
+metadata_db_path: "data/articles.db"
+bm25_index_path: "data/bm25.pkl"
+feedback_store_path: "data/feedback.db"
+user_store_path: "data/users.db"
+secret_key: "change-this-in-production-to-a-random-secret"
+
+# ── Web search ─────────────────────────────────────────────────────────────
+# web_search_provider: one of "duckduckgo", "google_cse", "bing"
+web_search_provider: "duckduckgo"
+web_search_num_results: 10
+bilingual_web_search: false
+google_cse_api_key: ""
+google_cse_cx: ""
+bing_api_key: ""
+
+# ── Language ───────────────────────────────────────────────────────────────
+# default_language: one of "ro", "en"
+default_language: "en"
+# restrict_language: null means both languages; set to "ro" or "en" to restrict
+restrict_language: null
+
+# ── Timeouts (seconds) ─────────────────────────────────────────────────────
+request_timeout_seconds: 20.0
+component_timeout_seconds: 18.0
+
+# ── Content quality / clickbait filtering ──────────────────────────────────
+# mismatch_threshold: title_sim - content_sim gap that triggers a quality warning
+mismatch_threshold: 0.3
+# domain_blocklist: list of domain names to exclude from web results
+domain_blocklist: []
+
+# ── Feedback / user ratings ────────────────────────────────────────────────
+feedback_signal_enabled: false
+feedback_signal_boost: 0.1
+feedback_signal_min_rating: 4.0
+
+# ── Fusion strategy ────────────────────────────────────────────────────────
+# fusion_strategy: one of "rrf", "weighted_sum"
+fusion_strategy: "rrf"

@@ -1,0 +1,14 @@
+flask==3.1.1
+sentence-transformers==3.4.1
+faiss-cpu==1.10.0
+rank_bm25==0.2.2
+langdetect==1.0.9
+langid==1.1.6
+watchdog==6.0.0
+PyYAML==6.0.2
+bibtexparser==1.4.3
+hypothesis==6.131.15
+pytest==8.3.5
+numpy==2.2.3
+requests==2.32.3
+ddgs==9.14.1

@@ -1,0 +1,36 @@
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Virtual environment
+venv/
+env/
+ENV/
+
+# Data files
+data/
+*.db
+*.pkl
+*.index
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Test files (temporary)
+test_*.py
+debug_*.py
+add_test_articles.py
+add_spec_articles.py
+build_indexes.py
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
