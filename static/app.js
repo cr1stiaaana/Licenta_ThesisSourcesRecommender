@@ -128,6 +128,8 @@ const STRINGS = {
     btn_save:          'Salvează',
     btn_unsave:        'Șterge',
     btn_load_more:     'Încarcă mai multe',
+    no_more_articles:  'Nu am mai găsit articole relevante.',
+    no_more_web:       'Nu am mai găsit surse relevante.',
     saved_items:       'Salvate',
     no_saved_items:    'Nu aveți articole sau resurse salvate.',
     view_saved:        'Vezi salvate',
@@ -181,6 +183,8 @@ const STRINGS = {
     btn_save:          'Save',
     btn_unsave:        'Remove',
     btn_load_more:     'Load more',
+    no_more_articles:  'No more relevant articles found.',
+    no_more_web:       'No more relevant sources found.',
     saved_items:       'Saved',
     no_saved_items:    'You have no saved articles or resources.',
     view_saved:        'View saved',
@@ -1235,15 +1239,149 @@ queryForm.addEventListener('submit', async (e) => {
 if (articlesLoadMore) {
   articlesLoadMore.addEventListener('click', async () => {
     console.log('Load more articles clicked, current offset:', displayedArticles);
-    await submitQuery(displayedArticles);
+    await loadMoreArticles();
   });
 }
 
 if (webLoadMore) {
   webLoadMore.addEventListener('click', async () => {
     console.log('Load more web resources clicked, current offset:', displayedWebResources);
-    await submitQuery(displayedWebResources);
+    await loadMoreWebResources();
   });
+}
+
+async function loadMoreArticles() {
+  if (!currentQueryData) return;
+  
+  setSubmitDisabled(true);
+  showLoading();
+  
+  try {
+    const requestBody = {
+      ...currentQueryData,
+      offset: displayedArticles,
+      type: 'articles' // Request only articles
+    };
+    
+    const resp = await fetch('/recommend', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(requestBody),
+    });
+
+    const data = await resp.json();
+
+    if (!resp.ok) {
+      const msg = data.error || ('HTTP ' + resp.status);
+      showError(msg);
+      return;
+    }
+
+    const newArticles = data.articles || [];
+    console.log('Loaded more articles:', newArticles.length);
+    
+    if (newArticles.length === 0) {
+      // No more results - show message
+      hasMoreArticles = false;
+      articlesLoadMore.hidden = true;
+      
+      const noMoreMsg = document.createElement('p');
+      noMoreMsg.className = 'no-more-message';
+      noMoreMsg.textContent = t('no_more_articles');
+      articlesList.appendChild(noMoreMsg);
+      
+      saveState();
+      return;
+    }
+    
+    if (newArticles.length < ITEMS_PER_PAGE) {
+      hasMoreArticles = false;
+    }
+    
+    allArticles = allArticles.concat(newArticles);
+    
+    newArticles.forEach(article => {
+      articlesList.appendChild(buildArticleCard(article));
+    });
+    displayedArticles += newArticles.length;
+    
+    articlesLoadMore.hidden = !hasMoreArticles || newArticles.length === 0;
+    updateTabCounts();
+    saveState();
+
+  } catch (err) {
+    showError(err.message || 'Network error');
+  } finally {
+    hideLoading();
+    setSubmitDisabled(false);
+  }
+}
+
+async function loadMoreWebResources() {
+  if (!currentQueryData) return;
+  
+  setSubmitDisabled(true);
+  showLoading();
+  
+  try {
+    const requestBody = {
+      ...currentQueryData,
+      offset: displayedWebResources,
+      type: 'web' // Request only web resources
+    };
+    
+    const resp = await fetch('/recommend', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(requestBody),
+    });
+
+    const data = await resp.json();
+
+    if (!resp.ok) {
+      const msg = data.error || ('HTTP ' + resp.status);
+      showError(msg);
+      return;
+    }
+
+    const newWebResources = data.web_resources || [];
+    console.log('Loaded more web resources:', newWebResources.length);
+    
+    if (newWebResources.length === 0) {
+      // No more results - show message
+      hasMoreWebResources = false;
+      webLoadMore.hidden = true;
+      
+      const noMoreMsg = document.createElement('p');
+      noMoreMsg.className = 'no-more-message';
+      noMoreMsg.textContent = t('no_more_web');
+      webList.appendChild(noMoreMsg);
+      
+      saveState();
+      return;
+    }
+    
+    if (newWebResources.length < ITEMS_PER_PAGE) {
+      hasMoreWebResources = false;
+    }
+    
+    allWebResources = allWebResources.concat(newWebResources);
+    
+    newWebResources.forEach(resource => {
+      webList.appendChild(buildWebCard(resource));
+    });
+    displayedWebResources += newWebResources.length;
+    
+    webLoadMore.hidden = !hasMoreWebResources || newWebResources.length === 0;
+    updateTabCounts();
+    saveState();
+
+  } catch (err) {
+    showError(err.message || 'Network error');
+  } finally {
+    hideLoading();
+    setSubmitDisabled(false);
+  }
 }
 
 /* ── Authentication modals ──────────────────────────────────── */

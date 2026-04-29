@@ -39,8 +39,8 @@ class DuckDuckGoAdapter(WebSearchAdapter):
         """Search DuckDuckGo and return up to num_results results."""
         results: list[RawWebResult] = []
 
-        # Cap at 5 to keep latency low — ddgs slows down significantly above 5
-        fetch_count = min(num_results, 5)
+        # Cap at 20 to support pagination while keeping reasonable latency
+        fetch_count = min(num_results, 20)
 
         with DDGS(timeout=self._timeout) as ddgs:
             hits = list(ddgs.text(query, max_results=fetch_count) or [])

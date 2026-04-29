@@ -16,7 +16,7 @@ keyword_top_k: 20
 
 # ── Minimum score thresholds ───────────────────────────────────────────────
 min_article_score: 0.001
-min_web_score: 0.1
+min_web_score: 0.05  # Lowered to allow more results for pagination (was 0.1)
 
 # ── Embedding model ────────────────────────────────────────────────────────
 embedding_model: "paraphrase-multilingual-mpnet-base-v2"
@@ -32,7 +32,7 @@ secret_key: "change-this-in-production-to-a-random-secret"
 # ── Web search ─────────────────────────────────────────────────────────────
 # web_search_provider: one of "duckduckgo", "google_cse", "bing"
 web_search_provider: "duckduckgo"
-web_search_num_results: 10
+web_search_num_results: 50  # Increased to support pagination (was 10)
 bilingual_web_search: false
 google_cse_api_key: ""
 google_cse_cx: ""

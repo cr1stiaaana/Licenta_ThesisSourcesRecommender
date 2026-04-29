@@ -200,60 +200,60 @@
         <div class="tabs" role="tablist">
           <button
             type="button"
-            id="tab-articles"
+            id="tab-web"
             class="tab active"
             role="tab"
             aria-selected="true"
-            aria-controls="panel-articles"
-          >
-            <span data-i18n="heading_articles">Articole</span>
-            <span class="tab-count" id="articles-count"></span>
-          </button>
-          <button
-            type="button"
-            id="tab-web"
-            class="tab"
-            role="tab"
-            aria-selected="false"
             aria-controls="panel-web"
           >
             <span data-i18n="heading_web">Resurse Web</span>
             <span class="tab-count" id="web-count"></span>
+          </button>
+          <button
+            type="button"
+            id="tab-articles"
+            class="tab"
+            role="tab"
+            aria-selected="false"
+            aria-controls="panel-articles"
+          >
+            <span data-i18n="heading_articles">Articole</span>
+            <span class="tab-count" id="articles-count"></span>
           </button>
         </div>
 
         <!-- Tab panels -->
         <div class="tab-panels">
           
-          <!-- Articles panel -->
-          <section
-            id="panel-articles"
-            class="tab-panel"
-            role="tabpanel"
-            aria-labelledby="tab-articles"
-          >
-            <div id="articles-list" class="results-list" role="list"></div>
-            <p id="articles-empty" class="empty-message" hidden data-i18n="no_articles">
-              Nu au fost găsite articole suficient de relevante.
-            </p>
-            <button id="articles-load-more" class="btn btn-load-more" hidden>
-              <span data-i18n="btn_load_more">Încarcă mai multe</span>
-            </button>
-          </section>
-
           <!-- Web Resources panel -->
           <section
             id="panel-web"
             class="tab-panel"
             role="tabpanel"
             aria-labelledby="tab-web"
-            hidden
           >
             <div id="web-list" class="results-list" role="list"></div>
             <p id="web-empty" class="empty-message" hidden data-i18n="no_web">
               Nu au fost găsite resurse web suficient de relevante.
             </p>
             <button id="web-load-more" class="btn btn-load-more" hidden>
+              <span data-i18n="btn_load_more">Încarcă mai multe</span>
+            </button>
+          </section>
+
+          <!-- Articles panel -->
+          <section
+            id="panel-articles"
+            class="tab-panel"
+            role="tabpanel"
+            aria-labelledby="tab-articles"
+            hidden
+          >
+            <div id="articles-list" class="results-list" role="list"></div>
+            <p id="articles-empty" class="empty-message" hidden data-i18n="no_articles">
+              Nu au fost găsite articole suficient de relevante.
+            </p>
+            <button id="articles-load-more" class="btn btn-load-more" hidden>
               <span data-i18n="btn_load_more">Încarcă mai multe</span>
             </button>
           </section>

@@ -129,10 +129,15 @@ def _make_recommend_blueprint(
         if not isinstance(raw_title, str):
             raw_title = str(raw_title)
 
-        # ── Get offset for pagination ─────────────────────────────────────
+        # ── Get offset and type for pagination ───────────────────────────
         offset: int = data.get("offset", 0)
         if not isinstance(offset, int) or offset < 0:
             offset = 0
+        
+        # Get result type filter ('articles', 'web', or 'both')
+        result_type: str = data.get("type", "both")
+        if result_type not in ("articles", "web", "both"):
+            result_type = "both"
 
         error_key = _validate_title(raw_title)
         if error_key:
@@ -169,20 +174,26 @@ def _make_recommend_blueprint(
         with concurrent.futures.ThreadPoolExecutor(max_workers=4) as executor:
             futures: dict[str, concurrent.futures.Future] = {}
 
-            if semantic_retriever is not None:
-                futures["semantic"] = executor.submit(
-                    semantic_retriever.retrieve, query, cfg.semantic_top_k
+            # Only run article retrievers if we need articles
+            if result_type in ("articles", "both"):
+                if semantic_retriever is not None:
+                    futures["semantic"] = executor.submit(
+                        semantic_retriever.retrieve, query, cfg.semantic_top_k
+                    )
+                if keyword_retriever is not None:
+                    futures["keyword"] = executor.submit(
+                        keyword_retriever.retrieve, query, cfg.keyword_top_k
+                    )
+                futures["academic_web"] = executor.submit(
+                    academic_web_retriever.retrieve, query, cfg.article_top_k
                 )
-            if keyword_retriever is not None:
-                futures["keyword"] = executor.submit(
-                    keyword_retriever.retrieve, query, cfg.keyword_top_k
+            
+            # Always run web retriever if we need web resources (even for pagination)
+            # Web retriever doesn't support offset, so we fetch all results and paginate in memory
+            if result_type in ("web", "both"):
+                futures["web"] = executor.submit(
+                    web_retriever.retrieve, query, query_language
                 )
-            futures["academic_web"] = executor.submit(
-                academic_web_retriever.retrieve, query, cfg.article_top_k
-            )
-            futures["web"] = executor.submit(
-                web_retriever.retrieve, query, query_language
-            )
 
             for name, future in futures.items():
                 try:
@@ -227,42 +238,47 @@ def _make_recommend_blueprint(
                 # Merge academic_web into semantic
                 semantic_result.items.extend(academic_web_result.items)
 
-        # ── Both article retrievers failed → HTTP 500 ─────────────────────
-        if semantic_result is None and keyword_result is None:
-            resp = RecommendResponse(
-                query_language=query_language,
-                notices=notices,
-                error="All article retrievers are unavailable.",
+        # ── Both article retrievers failed → HTTP 500 (only if articles requested) ─
+        if result_type in ("articles", "both"):
+            if semantic_result is None and keyword_result is None:
+                resp = RecommendResponse(
+                    query_language=query_language,
+                    notices=notices,
+                    error="All article retrievers are unavailable.",
+                )
+                return jsonify(_serialize_response(resp)), 500
+
+        # ── Fuse articles (only if articles requested) ────────────────────
+        articles: list[ArticleRecommendation] = []
+        if result_type in ("articles", "both"):
+            sem = semantic_result if semantic_result is not None else RetrievalResult(source="semantic")
+            kw = keyword_result if keyword_result is not None else RetrievalResult(source="keyword")
+
+            # Get more results than needed to allow pagination
+            fetch_count = cfg.article_top_k + offset + 10  # Fetch extra to ensure we have enough
+
+            all_articles: list[ArticleRecommendation] = hybrid_ranker.fuse_articles(
+                semantic=sem,
+                keyword=kw,
+                top_k=fetch_count,
+                semantic_weight=cfg.semantic_weight,
+                keyword_weight=cfg.keyword_weight,
             )
-            return jsonify(_serialize_response(resp)), 500
+            
+            # Apply offset and limit
+            articles = all_articles[offset:offset + cfg.article_top_k]
 
-        # ── Fuse articles ─────────────────────────────────────────────────
-        sem = semantic_result if semantic_result is not None else RetrievalResult(source="semantic")
-        kw = keyword_result if keyword_result is not None else RetrievalResult(source="keyword")
-
-        # Get more results than needed to allow pagination
-        fetch_count = cfg.article_top_k + offset + 10  # Fetch extra to ensure we have enough
-
-        all_articles: list[ArticleRecommendation] = hybrid_ranker.fuse_articles(
-            semantic=sem,
-            keyword=kw,
-            top_k=fetch_count,
-            semantic_weight=cfg.semantic_weight,
-            keyword_weight=cfg.keyword_weight,
-        )
-        
-        # Apply offset and limit
-        articles = all_articles[offset:offset + cfg.article_top_k]
-
-        # ── Rank web resources ────────────────────────────────────────────
-        fetch_web_count = cfg.web_top_k + offset + 10
-        all_web_resources: list[WebResourceRecommendation] = hybrid_ranker.rank_web_resources(
-            web=web_result,
-            top_k=fetch_web_count,
-        )
-        
-        # Apply offset and limit
-        web_resources = all_web_resources[offset:offset + cfg.web_top_k]
+        # ── Rank web resources (only if web requested) ────────────────────
+        web_resources: list[WebResourceRecommendation] = []
+        if result_type in ("web", "both"):
+            fetch_web_count = cfg.web_top_k + offset + 10
+            all_web_resources: list[WebResourceRecommendation] = hybrid_ranker.rank_web_resources(
+                web=web_result,
+                top_k=fetch_web_count,
+            )
+            
+            # Apply offset and limit
+            web_resources = all_web_resources[offset:offset + cfg.web_top_k]
 
         # ── Content verification ──────────────────────────────────────────
         if content_verifier is not None and semantic_retriever is not None:
