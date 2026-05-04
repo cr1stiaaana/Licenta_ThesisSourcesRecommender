@@ -1,0 +1,205 @@
+@startuml Hybrid Thesis Recommender - Frontend-Backend Architecture
+
+skinparam backgroundColor #FEFEFE
+skinparam defaultFontSize 10
+skinparam packageStyle rectangle
+skinparam nodesep 20
+skinparam ranksep 30
+
+title Frontend-Backend Architecture
+
+' Frontend
+package "Frontend (Client-Side)" #E1F5FF {
+    
+    package "User Interface" {
+        [HTML5\nSemantic Structure] as HTML
+        [CSS3\nDark Mode Support] as CSS
+        [TypeScript\nES2020 Modules] as TS
+    }
+    
+    package "State Management" {
+        [Local State] as State
+        [LocalStorage\nFallback] as Storage
+    }
+    
+    package "API Client" {
+        [Fetch API\nHTTP Client] as Fetch
+        [Error Handling] as ErrorHandler
+        [Response Parser] as Parser
+    }
+    
+    note right of TS
+        **Frontend Features:**
+        • Single Page Application
+        • Reactive UI updates
+        • Bilingual (RO/EN)
+        • Dark mode toggle
+        • Star ratings
+        • Saved items
+        • Pagination
+    end note
+}
+
+' Communication Layer
+package "Communication Layer" #FFF9E6 {
+    [REST API\nHTTP/JSON] as REST
+    [WebSocket\n(Future)] as WS
+    
+    note right of REST
+        **API Endpoints:**
+        • POST /recommend
+        • POST /feedback
+        • GET /feedback/:id
+        • POST /auth/register
+        • POST /auth/login
+        • GET /saved
+        • POST /saved
+        • DELETE /saved/:id
+    end note
+}
+
+' Backend
+package "Backend (Server-Side)" #FFF4E1 {
+    
+    package "API Layer" {
+        [Flask Application\nWSGI Server] as Flask
+        [Blueprint Router] as Router
+        [Request Validator] as Validator
+        [Response Serializer] as Serializer
+    }
+    
+    package "Business Logic" {
+        [Language Detector\nlangdetect + langid] as LangDet
+        [Query Processor] as QueryProc
+        [Result Aggregator] as Aggregator
+        [Config Manager\nHot-reload] as Config
+    }
+    
+    package "Retrieval Services" {
+        [Semantic Retriever\nFAISS + Embeddings] as Semantic
+        [Keyword Retriever\nBM25] as Keyword
+        [Web Retriever\nDuckDuckGo] as Web
+        [Academic Retriever\nScholar/arXiv] as Academic
+    }
+    
+    package "Processing Services" {
+        [Hybrid Ranker\nRRF Fusion] as Ranker
+        [Content Verifier\nClickbait Detection] as Verifier
+        [Feedback System\nRating Boost] as Feedback
+    }
+    
+    package "Data Access Layer" {
+        [Article Store\nFAISS + SQLite] as ArticleStore
+        [Feedback Store\nSQLite] as FeedbackStore
+        [User Store\nSQLite] as UserStore
+    }
+    
+    note right of Flask
+        **Backend Features:**
+        • RESTful API
+        • Parallel processing
+        • Graceful degradation
+        • Hot-reload config
+        • Session management
+        • Error handling
+        • Logging
+    end note
+}
+
+' Data Layer
+package "Data Layer" #F3E5F5 {
+    database "FAISS Index\n768-dim vectors" as FAISS
+    database "BM25 Index\nInverted index" as BM25
+    database "articles.db\nMetadata" as ArticlesDB
+    database "feedback.db\nRatings" as FeedbackDB
+    database "users.db\nAccounts" as UsersDB
+}
+
+' External Services
+cloud "External Services" #FFE0B2 {
+    [DuckDuckGo API] as DDG
+    [Semantic Scholar] as Scholar
+    [arXiv API] as ArXiv
+}
+
+' Frontend Internal Connections
+HTML --> TS
+CSS --> TS
+TS --> State
+TS --> Storage
+TS --> Fetch
+Fetch --> ErrorHandler
+Fetch --> Parser
+
+' Frontend to Communication
+Fetch --> REST : HTTP Requests\nJSON Payload
+
+' Communication to Backend
+REST --> Flask : Route to\nBlueprints
+
+' Backend API Layer
+Flask --> Router
+Router --> Validator
+Validator --> QueryProc
+
+' Backend Business Logic
+QueryProc --> LangDet
+QueryProc --> Semantic
+QueryProc --> Keyword
+QueryProc --> Web
+QueryProc --> Academic
+
+LangDet --> Config
+QueryProc --> Config
+
+' Backend Retrieval
+Semantic --> ArticleStore
+Keyword --> ArticleStore
+Web --> DDG
+Academic --> Scholar
+Academic --> ArXiv
+
+' Backend Processing
+Semantic --> Ranker
+Keyword --> Ranker
+Web --> Ranker
+Academic --> Ranker
+
+Ranker --> Verifier
+Ranker --> Feedback
+Verifier --> Aggregator
+Aggregator --> Serializer
+
+' Backend Data Access
+ArticleStore --> FAISS
+ArticleStore --> BM25
+ArticleStore --> ArticlesDB
+Feedback --> FeedbackStore
+FeedbackStore --> FeedbackDB
+Router --> UserStore
+UserStore --> UsersDB
+
+' Backend to Communication
+Serializer --> REST : JSON Response
+
+' Communication to Frontend
+REST --> Parser : HTTP Response
+
+' Frontend State Update
+Parser --> State : Update UI
+
+' Data Flow Notes
+note bottom of REST
+    **Request Flow:**
+    1. User action → TypeScript event
+    2. Fetch API → HTTP request
+    3. Flask router → Blueprint
+    4. Parallel retrieval (4 sources)
+    5. Hybrid ranking + verification
+    6. JSON serialization
+    7. Response → UI update
+    
+    **Average Latency:** ~850ms
+end note
+
+@enduml

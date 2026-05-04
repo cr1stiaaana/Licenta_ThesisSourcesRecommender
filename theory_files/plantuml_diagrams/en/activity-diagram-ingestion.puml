@@ -1,0 +1,167 @@
+@startuml Hybrid Thesis Recommender - Article Ingestion Activity Diagram
+
+skinparam backgroundColor #FEFEFE
+skinparam activityBackgroundColor #FFFFFF
+skinparam activityBorderColor #333333
+skinparam activityDiamondBackgroundColor #FFF4E1
+skinparam activityStartColor #4CAF50
+skinparam activityEndColor #F44336
+
+title Article Ingestion Pipeline
+
+start
+
+:User runs ingestion command;
+note right
+  python app/main.py ingest \
+    --file data/articles.json \
+    --format json
+end note
+
+:Parse command-line arguments;
+
+if (File exists?) then (yes)
+  :Read file content;
+else (no)
+  :Display error message;
+  stop
+endif
+
+if (Format valid?) then (yes)
+  :Determine parser\n(JSON/CSV/BibTeX);
+else (no)
+  :Display error message;
+  stop
+endif
+
+partition "Parse Articles" {
+  if (Format = JSON?) then (yes)
+    :Parse JSON array;
+    :Extract fields:\n- title\n- abstract\n- authors\n- year\n- doi\n- url\n- keywords;
+  elseif (Format = CSV?) then (yes)
+    :Parse CSV rows;
+    :Map columns to fields;
+  elseif (Format = BibTeX?) then (yes)
+    :Parse BibTeX entries;
+    :Extract @article fields;
+  endif
+  
+  :Create Article objects;
+}
+
+partition "Validate Articles" {
+  repeat
+    :Take next article;
+    
+    if (Title present?) then (yes)
+      if (Title length >= 3?) then (yes)
+        :Mark as valid;
+      else (no)
+        :Skip article\n(title too short);
+      endif
+    else (no)
+      :Skip article\n(missing title);
+    endif
+    
+  repeat while (More articles?) is (yes)
+  ->no;
+}
+
+:Count valid articles;
+
+if (Valid articles > 0?) then (yes)
+  
+  partition "Store Articles" {
+    :Open SQLite connection\n(articles.db);
+    
+    repeat
+      :Take next valid article;
+      
+      :Generate article ID\n(hash or DOI);
+      
+      :INSERT INTO articles\n(id, title, abstract,\nauthors, year, doi,\nurl, keywords, language);
+      
+      note right
+        Schema:
+        CREATE TABLE articles (
+          id TEXT PRIMARY KEY,
+          title TEXT NOT NULL,
+          abstract TEXT,
+          authors TEXT,
+          year INTEGER,
+          doi TEXT,
+          url TEXT,
+          keywords TEXT,
+          language TEXT
+        )
+      end note
+      
+    repeat while (More articles?) is (yes)
+    ->no;
+    
+    :Commit transaction;
+    :Close connection;
+  }
+  
+  partition "Build Indexes" {
+    :Load all articles\nfrom database;
+    
+    fork
+      :Build FAISS Index;
+      
+      :Initialize SentenceTransformer\nmodel (mpnet-base-v2);
+      
+      repeat
+        :Take next article;
+        :Combine title + abstract;
+        :Generate 768-dim embedding;
+        :Normalize to unit length;
+        :Add to FAISS index;
+      repeat while (More articles?) is (yes)
+      ->no;
+      
+      :Save FAISS index\n(faiss.index);
+      
+    fork again
+      :Build BM25 Index;
+      
+      repeat
+        :Take next article;
+        :Combine title + abstract;
+        :Tokenize text\n(lowercase, split);
+        :Add to corpus;
+      repeat while (More articles?) is (yes)
+      ->no;
+      
+      :Initialize BM25Okapi\nwith corpus;
+      
+      :Serialize to pickle\n(bm25.pkl);
+      
+    end fork
+  }
+  
+  :Display success message\n"Ingested N articles";
+  
+else (no)
+  :Display warning\n"No valid articles found";
+endif
+
+stop
+
+note bottom
+  Supported Formats:
+  - JSON: Array of article objects
+  - CSV: Comma-separated values with header
+  - BibTeX: Standard bibliography format
+  
+  Index Build Time:
+  - FAISS: ~2-3 seconds per 1000 articles
+  - BM25: ~1 second per 1000 articles
+  
+  Storage Requirements:
+  - SQLite: ~2KB per article
+  - FAISS: ~3KB per article (768 floats)
+  - BM25: ~1KB per article
+end note
+
+@enduml

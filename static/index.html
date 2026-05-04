@@ -17,6 +17,14 @@
       </div>
       <div class="header-actions">
         <button
+          id="about-btn"
+          class="btn-about"
+          aria-label="About the system"
+        >
+          <span data-i18n="btn_about">Despre</span>
+        </button>
+        
+        <button
           id="saved-btn"
           class="btn-saved"
           aria-label="View saved items"
@@ -362,13 +370,48 @@
     </div>
   </div>
 
+  <!-- ── About modal ────────────────────────────────────────────── -->
+  <div id="about-modal" class="modal" hidden role="dialog" aria-labelledby="about-modal-title">
+    <div class="modal-content about-modal-content">
+      <div class="modal-header">
+        <h2 id="about-modal-title" data-i18n="about_title">Despre Sistem</h2>
+        <button id="about-modal-close" class="modal-close" aria-label="Close">&times;</button>
+      </div>
+      <div class="modal-body about-modal-body">
+        <h3 data-i18n="about_heading">Thesis Sources Recommender</h3>
+        <p data-i18n="about_description">
+          Un sistem hibrid de recomandare pentru cercetarea academică care combină căutarea semantică, 
+          potrivirea cuvintelor cheie și căutarea web pentru a sugera articole și resurse relevante pentru teza ta.
+        </p>
+        
+        <h4 data-i18n="about_features_title">Caracteristici Principale</h4>
+        <ul class="about-features">
+          <li data-i18n="about_feature_hybrid">🔍 Căutare Hibridă: Combină căutarea semantică (FAISS) cu potrivirea cuvintelor cheie (BM25) pentru rezultate precise</li>
+          <li data-i18n="about_feature_web">🌐 Integrare Web: Căutare DuckDuckGo și API-uri academice (Semantic Scholar, arXiv) pentru resurse actualizate</li>
+          <li data-i18n="about_feature_quality">✓ Verificare Calitate: Detectează și marchează conținut de calitate scăzută sau clickbait</li>
+          <li data-i18n="about_feature_feedback">⭐ Sistem de Feedback: Evaluează utilitatea rezultatelor pentru a îmbunătăți recomandările</li>
+          <li data-i18n="about_feature_bilingual">🌍 Suport Bilingv: Interfață în română și engleză cu detectare automată a limbii</li>
+        </ul>
+        
+        <h4 data-i18n="about_how_title">Cum Funcționează</h4>
+        <ol class="about-steps">
+          <li data-i18n="about_how_step1">1. Introduceți titlul tezei (obligatoriu) și opțional rezumatul și cuvintele cheie</li>
+          <li data-i18n="about_how_step2">2. Sistemul analizează cererea și caută în baza de date locală și pe web</li>
+          <li data-i18n="about_how_step3">3. Rezultatele sunt clasificate folosind algoritmi hibrizi și verificate pentru calitate</li>
+          <li data-i18n="about_how_step4">4. Navigați prin rezultate, evaluați-le și salvați cele mai relevante pentru referință ulterioară</li>
+        </ol>
+      </div>
+    </div>
+  </div>
+
   <!-- ── Footer ─────────────────────────────────────────────────────── -->
   <footer class="site-footer">
     <p class="footer-text" data-i18n="footer_text">
-      Thesis Sources Recommender &mdash; Universitate
+      Thesis Sources Recommender &mdash; Universitatea POLITEHNICA Bucuresti
     </p>
   </footer>
 
-  <script src="/static/app.js"></script>
+  <script type="module" src="/static/dist/api.js"></script>
+  <script type="module" src="/static/dist/app.js"></script>
 </body>
 </html>

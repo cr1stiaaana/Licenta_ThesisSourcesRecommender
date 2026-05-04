@@ -1,0 +1,87 @@
+@startuml Query Processing States (Simplified)
+
+skinparam backgroundColor #FEFEFE
+skinparam defaultFontSize 9
+skinparam state {
+    BackgroundColor #FFFFFF
+    BorderColor #333333
+}
+
+title Query Processing State Machine
+
+[*] --> Idle
+
+Idle --> Validating : Submit query
+
+state Validating {
+    [*] --> CheckLength
+    CheckLength --> CheckContent : OK
+    CheckContent --> [*] : Valid
+}
+
+Validating --> Idle : Invalid
+Validating --> LanguageDetection : Valid
+
+state LanguageDetection {
+    [*] --> Detect
+    Detect : langdetect\n+ langid
+    Detect --> [*]
+}
+
+LanguageDetection --> Retrieving
+
+state Retrieving {
+    state "Parallel" as Par {
+        state Semantic
+        state Keyword
+        state Web
+        --
+        [*] --> Semantic
+        [*] --> Keyword
+        [*] --> Web
+    }
+}
+
+Retrieving --> Ranking
+
+state Ranking {
+    [*] --> Fuse
+    Fuse : RRF or\nWeighted Sum
+    Fuse --> Feedback
+    Feedback : Boost ratings
+    Feedback --> Filter
+    Filter : Min score\nSort desc
+    Filter --> [*]
+}
+
+Ranking --> Verifying
+
+state Verifying {
+    [*] --> CheckQuality
+    CheckQuality : Title/content\nsimilarity
+    CheckQuality --> CheckDomains
+    CheckDomains : Blocklist
+    CheckDomains --> [*]
+}
+
+Verifying --> Responding
+
+state Responding {
+    [*] --> BuildJSON
+    BuildJSON --> Paginate
+    Paginate --> [*]
+}
+
+Responding --> Idle : Ready
+
+note right of Ranking
+  RRF: score = Σ w/(60+r)
+  Feedback: +0.1 boost
+end note
+
+note right of Verifying
+  Mismatch > 0.3
+  → clickbait warning
+end note
+
+@enduml

@@ -1,0 +1,197 @@
+@startuml Hybrid Thesis Recommender - Deployment Diagram
+
+skinparam backgroundColor #FEFEFE
+skinparam node {
+    BackgroundColor #FFFFFF
+    BorderColor #333333
+}
+skinparam component {
+    BackgroundColor<<frontend>> #E1F5FF
+    BackgroundColor<<backend>> #FFF4E1
+    BackgroundColor<<ml>> #E8F5E9
+    BackgroundColor<<storage>> #F3E5F5
+    BackgroundColor<<external>> #FFE0B2
+}
+
+' Client Tier
+node "Client Device" {
+    component "Web Browser" <<frontend>> {
+        [HTML/CSS] as HTML
+        [TypeScript App] as TS
+        [Local Storage] as LocalStorage
+    }
+}
+
+' Application Server
+node "Application Server\n(localhost:5000)" {
+    component "Flask Application" <<backend>> {
+        [Flask WSGI] as WSGI
+        [API Blueprints] as Blueprints
+        [Config Manager] as Config
+        [Language Detector] as LangDet
+        [I18n Module] as I18n
+    }
+    
+    component "ML Components" <<ml>> {
+        [Sentence Transformer] as Transformer
+        [FAISS Library] as FAISSLib
+        [BM25 Library] as BM25Lib
+    }
+    
+    component "Business Logic" <<backend>> {
+        [Semantic Retriever] as SemRet
+        [Keyword Retriever] as KwRet
+        [Web Retriever] as WebRet
+        [Academic Retriever] as AcadRet
+        [Hybrid Ranker] as Ranker
+        [Content Verifier] as Verifier
+    }
+    
+    component "Data Access" <<backend>> {
+        [Article Store] as ArticleStore
+        [Feedback Store] as FeedbackStore
+        [User Store] as UserStore
+    }
+}
+
+' Data Storage
+node "Local File System" {
+    database "Vector Store" <<storage>> {
+        [faiss.index\n~500MB] as FAISSIndex
+    }
+    
+    database "Keyword Index" <<storage>> {
+        [bm25.pkl\n~50MB] as BM25Index
+    }
+    
+    database "SQLite Databases" <<storage>> {
+        [articles.db\n~20MB] as ArticlesDB
+        [feedback.db\n~5MB] as FeedbackDB
+        [users.db\n~5MB] as UsersDB
+    }
+    
+    folder "Configuration" <<storage>> {
+        [config.yaml] as ConfigFile
+        [.env] as EnvFile
+    }
+    
+    folder "ML Models" <<ml>> {
+        [paraphrase-multilingual-\nmpnet-base-v2\n~420MB] as Model
+    }
+}
+
+' External Services
+cloud "External APIs" {
+    component "Web Search" <<external>> {
+        [DuckDuckGo API] as DDG
+        [Google CSE] as GoogleCSE
+        [Bing API] as BingAPI
+    }
+    
+    component "Academic APIs" <<external>> {
+        [Semantic Scholar] as SemanticScholar
+        [arXiv API] as ArXiv
+    }
+}
+
+' Client connections
+HTML --> TS : loads
+TS --> LocalStorage : stores saved items
+TS --> WSGI : HTTP/REST\n(port 5000)
+
+' Flask internal connections
+WSGI --> Blueprints : routes requests
+Blueprints --> Config : reads config
+Blueprints --> LangDet : detects language
+Blueprints --> I18n : translates messages
+
+' Business logic connections
+Blueprints --> SemRet : queries
+Blueprints --> KwRet : queries
+Blueprints --> WebRet : queries
+Blueprints --> AcadRet : queries
+
+SemRet --> Transformer : encodes text
+KwRet --> BM25Lib : scores documents
+SemRet --> FAISSLib : searches vectors
+
+SemRet --> Ranker : results
+KwRet --> Ranker : results
+WebRet --> Ranker : results
+AcadRet --> Ranker : results
+
+Ranker --> Verifier : ranked results
+Verifier --> SemRet : uses encoder
+
+' Data access connections
+SemRet --> ArticleStore : reads articles
+KwRet --> ArticleStore : reads articles
+Ranker --> FeedbackStore : queries ratings
+Blueprints --> UserStore : manages users
+
+ArticleStore --> FAISSIndex : vector search
+ArticleStore --> ArticlesDB : metadata
+KwRet --> BM25Index : keyword search
+FeedbackStore --> FeedbackDB : ratings
+UserStore --> UsersDB : users
+
+' Configuration connections
+Config --> ConfigFile : watches & reloads
+Config --> EnvFile : reads secrets
+
+' ML model connections
+Transformer --> Model : loads model
+
+' External API connections
+WebRet --> DDG : searches
+WebRet --> GoogleCSE : searches
+WebRet --> BingAPI : searches
+AcadRet --> SemanticScholar : searches
+AcadRet --> ArXiv : searches
+
+note right of WSGI
+  Development Server:
+  - Flask built-in server
+  - Single-threaded
+  - Debug mode available
+  
+  Production (planned):
+  - Gunicorn WSGI
+  - 4 workers
+  - nginx reverse proxy
+end note
+
+note right of FAISSIndex
+  Index Type: IndexFlatIP
+  Dimension: 768
+  Metric: Inner Product
+  (cosine similarity for
+  normalized vectors)
+end note
+
+note right of Model
+  Model: sentence-transformers
+  paraphrase-multilingual-
+  mpnet-base-v2
+  
+  Languages: 50+
+  Dimension: 768
+  Size: ~420MB
+end note
+
+note bottom of DDG
+  No API key required
+  Rate limits apply
+  Timeout: 10s
+  Max results: 50
+end note
+
+note bottom of SemanticScholar
+  Free API
+  No authentication
+  Rate limit: 100 req/5min
+  Fields: title, abstract,
+  authors, year, DOI
+end note
+
+@enduml

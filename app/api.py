@@ -363,7 +363,7 @@ def _make_feedback_blueprint(
 
         return jsonify({"message": t("rating_saved", lang)}), 200
 
-    @bp.route("/feedback/<item_id>", methods=["GET"])
+    @bp.route("/feedback/<path:item_id>", methods=["GET"])
     def get_feedback(item_id: str):  # type: ignore[return]
         session_id: str | None = request.args.get("session_id") or None
 
@@ -467,7 +467,7 @@ def _make_auth_blueprint(user_store: UserStore) -> Blueprint:
         user_store.save_item(user_id, item_id, item_data)
         return jsonify({"message": "Item saved"}), 200
 
-    @bp.route("/saved/<item_id>", methods=["DELETE"])
+    @bp.route("/saved/<path:item_id>", methods=["DELETE"])
     def unsave_item(item_id: str):
         user_id = session.get("user_id")
         if user_id is None:
@@ -476,7 +476,7 @@ def _make_auth_blueprint(user_store: UserStore) -> Blueprint:
         user_store.unsave_item(user_id, item_id)
         return jsonify({"message": "Item removed"}), 200
 
-    @bp.route("/saved/<item_id>/check", methods=["GET"])
+    @bp.route("/saved/<path:item_id>/check", methods=["GET"])
     def check_saved(item_id: str):
         user_id = session.get("user_id")
         if user_id is None:

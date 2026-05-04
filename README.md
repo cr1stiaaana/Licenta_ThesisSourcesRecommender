@@ -18,7 +18,7 @@ A hybrid recommendation system for academic thesis research that combines semant
 - **Search**: FAISS (semantic), BM25 (keyword)
 - **Embeddings**: sentence-transformers (paraphrase-multilingual-mpnet-base-v2)
 - **Database**: SQLite
-- **Frontend**: Vanilla JavaScript, HTML, CSS
+- **Frontend**: TypeScript, HTML, CSS (compiled to JavaScript)
 
 ## Installation
 
@@ -28,22 +28,52 @@ git clone https://github.com/cr1stiaaana/Licenta_ThesisSourcesRecommender.git
 cd Licenta_ThesisSourcesRecommender
 ```
 
-2. Install dependencies:
+2. Install Python dependencies:
 ```bash
 pip install -r requirements.txt
 ```
 
-3. Add articles to the database:
+3. Install Node.js dependencies and build frontend:
+```bash
+npm install
+npm run build
+```
+
+4. Add articles to the database:
 ```bash
 python add_realistic_articles.py
 ```
 
-4. Start the server:
+5. Start the server:
 ```bash
 python app/main.py
 ```
 
-5. Open http://localhost:5000 in your browser
+6. Open http://localhost:5000 in your browser
+
+## Development
+
+### Frontend Development
+
+The frontend is written in TypeScript and compiled to JavaScript.
+
+**Build once:**
+```bash
+npm run build
+```
+
+**Watch mode (auto-rebuild on changes):**
+```bash
+npm run watch
+```
+
+**TypeScript source files:**
+- `static/src/api.ts` - API client functions
+- `static/src/app.ts` - Main application logic
+- `static/src/types.ts` - Type definitions
+
+**Compiled output:**
+- `static/dist/` - Compiled JavaScript files (auto-generated, do not edit)
 
 ## Usage
 
@@ -72,9 +102,18 @@ Edit `config.yaml` to customize:
 │   ├── rankers/            # Hybrid ranking (RRF)
 │   ├── verifiers/          # Content quality verification
 │   └── web_search/         # Web search adapters
-├── static/                 # Frontend (HTML, CSS, JS)
+├── static/
+│   ├── src/                # TypeScript source files
+│   │   ├── api.ts          # API client
+│   │   ├── app.ts          # Main application
+│   │   └── types.ts        # Type definitions
+│   ├── dist/               # Compiled JavaScript (auto-generated)
+│   ├── index.html          # Main HTML
+│   └── style.css           # Styles
 ├── tests/                  # Integration tests
 ├── config.yaml             # Configuration
+├── package.json            # Node.js dependencies
+├── tsconfig.json           # TypeScript configuration
 └── requirements.txt        # Python dependencies
 ```
 

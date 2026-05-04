@@ -1,0 +1,99 @@
+@startuml Hybrid Thesis Recommender - Diagrama Componentelor
+
+!define RECTANGLE class
+
+skinparam componentStyle rectangle
+skinparam backgroundColor #FEFEFE
+skinparam defaultFontSize 10
+skinparam component {
+    BackgroundColor<<frontend>> #E1F5FF
+    BackgroundColor<<api>> #FFF4E1
+    BackgroundColor<<retrieval>> #E8F5E9
+    BackgroundColor<<processing>> #FFF3E0
+    BackgroundColor<<storage>> #F3E5F5
+    BackgroundColor<<external>> #FFE0B2
+    BorderColor #333333
+    ArrowColor #666666
+}
+skinparam nodesep 10
+skinparam ranksep 20
+
+' Frontend
+package "Frontend" <<frontend>> {
+    [Browser] as Browser
+    [TypeScript] as TSApp
+}
+
+' Strat API
+package "Strat API" <<api>> {
+    [Flask] as Flask
+    [Blueprint-uri] as BP
+    [Detector Limbă] as LD
+}
+
+' Strat Recuperare
+package "Strat Recuperare" <<retrieval>> {
+    [Semantic] as SR
+    [Cuvinte Cheie] as KR
+    [Web] as WR
+    [Academic] as AR
+}
+
+' Strat Procesare
+package "Strat Procesare" <<processing>> {
+    [Ranker Hibrid] as HR
+    [Verificator] as CV
+}
+
+' Strat Stocare
+package "Strat Stocare" <<storage>> {
+    database "FAISS" as FAISS
+    database "BM25" as BM25
+    database "SQLite" as DB
+}
+
+' Servicii Externe
+package "Servicii Externe" <<external>> {
+    [API-uri Web] as WebAPI
+    [API-uri Academice] as AcadAPI
+}
+
+' Conexiuni
+Browser --> TSApp
+TSApp --> Flask
+
+Flask --> BP
+Flask --> LD
+
+BP --> SR
+BP --> KR
+BP --> WR
+BP --> AR
+
+SR --> HR
+KR --> HR
+WR --> HR
+AR --> HR
+
+HR --> CV
+
+SR --> FAISS
+KR --> BM25
+SR --> DB
+KR --> DB
+HR --> DB
+
+WR --> WebAPI
+AR --> AcadAPI
+
+note right of HR
+  Fuziune RRF
+  Boost Feedback
+end note
+
+note right of CV
+  Filtru Clickbait
+  Listă Domenii Blocate
+end note
+
+@enduml

@@ -1,0 +1,107 @@
+@startuml Hybrid Thesis Recommender - Diagrama Claselor (Simplificată)
+
+skinparam classAttributeIconSize 0
+skinparam backgroundColor #FEFEFE
+skinparam defaultFontSize 9
+skinparam class {
+    BackgroundColor #FFFFFF
+    BorderColor #333333
+    ArrowColor #666666
+}
+skinparam nodesep 15
+skinparam ranksep 30
+
+' Modele de Date
+class Query {
+    +titlu: str
+    +rezumat: str
+    +cuvinte_cheie: str
+    +text_combinat(): str
+}
+
+class Article {
+    +id: str
+    +titlu: str
+    +rezumat: str
+    +autori: list[str]
+    +an: int
+    +doi: str
+    +url: str
+}
+
+class ScoredArticle {
+    +articol: Article
+    +scor: float
+}
+
+class RetrievalResult {
+    +elemente: list[ScoredArticle]
+    +sursa: str
+}
+
+' Recuperatoare
+class SemanticRetriever {
+    +codifica(text): ndarray
+    +recupereaza(query, k): Result
+}
+
+class KeywordRetriever {
+    +recupereaza(query, k): Result
+}
+
+class WebRetriever {
+    +recupereaza(query, limba): Result
+}
+
+' Ranker
+class HybridRanker {
+    +fuzionare_articole(...): list
+    +clasare_web(...): list
+}
+
+' Verificator
+class ContentVerifier {
+    +verifica(...): tuple
+}
+
+' Stocare
+class ArticleStore {
+    +cautare_vector(emb, k): list
+    +obtine_toate_articolele(): list
+}
+
+class FeedbackStore {
+    +actualizeaza_rating(...): void
+    +obtine_rating_uri(...): Result
+}
+
+' Relații
+Query --> RetrievalResult
+Article --> ScoredArticle
+ScoredArticle --> RetrievalResult
+
+SemanticRetriever ..> Query
+SemanticRetriever ..> RetrievalResult
+SemanticRetriever --> ArticleStore
+
+KeywordRetriever ..> Query
+KeywordRetriever ..> RetrievalResult
+KeywordRetriever --> ArticleStore
+
+WebRetriever ..> Query
+
+HybridRanker ..> RetrievalResult
+HybridRanker --> FeedbackStore
+
+ContentVerifier --> SemanticRetriever
+
+note right of HybridRanker
+  RRF: scor = Σ w/(60+rang)
+end note
+
+note right of ContentVerifier
+  Detectare clickbait prin
+  similaritate titlu/conținut
+end note
+
+@enduml

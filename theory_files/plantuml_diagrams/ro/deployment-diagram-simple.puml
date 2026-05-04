@@ -1,0 +1,65 @@
+@startuml Hybrid Thesis Recommender - Deployment (Simplificat)
+
+skinparam backgroundColor #FEFEFE
+skinparam defaultFontSize 9
+skinparam node {
+    BackgroundColor #FFFFFF
+    BorderColor #333333
+}
+
+' Client
+node "Client" {
+    [Browser] as Browser
+    [TypeScript] as TS
+}
+
+' Server
+node "Server\n(localhost:5000)" {
+    [Flask] as Flask
+    [Recuperatoare] as Ret
+    [Ranker] as Rank
+    [Verificator] as Ver
+}
+
+' Stocare
+node "Stocare" {
+    database "FAISS\n500MB" as FAISS
+    database "BM25\n50MB" as BM25
+    database "SQLite\n30MB" as DB
+}
+
+' Extern
+cloud "Extern" {
+    [DuckDuckGo] as DDG
+    [Semantic\nScholar] as SS
+    [arXiv] as Arxiv
+}
+
+' Conexiuni
+Browser --> TS
+TS --> Flask : HTTP\nport 5000
+
+Flask --> Ret
+Ret --> Rank
+Rank --> Ver
+
+Ret --> FAISS
+Ret --> BM25
+Ret --> DB
+Rank --> DB
+
+Ret --> DDG
+Ret --> SS
+Ret --> Arxiv
+
+note right of FAISS
+  Vectori 768-dim
+  mpnet-base-v2
+end note
+
+note right of DDG
+  Fără cheie API
+  Timeout: 10s
+end note
+
+@enduml

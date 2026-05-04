@@ -1,0 +1,87 @@
+@startuml Procesare Query - Stări (Simplificat)
+
+skinparam backgroundColor #FEFEFE
+skinparam defaultFontSize 9
+skinparam state {
+    BackgroundColor #FFFFFF
+    BorderColor #333333
+}
+
+title Mașină de Stări Procesare Query
+
+[*] --> Inactiv
+
+Inactiv --> Validare : Trimite query
+
+state Validare {
+    [*] --> VerificaLungime
+    VerificaLungime --> VerificaContinut : OK
+    VerificaContinut --> [*] : Valid
+}
+
+Validare --> Inactiv : Invalid
+Validare --> DetectareLimba : Valid
+
+state DetectareLimba {
+    [*] --> Detecteaza
+    Detecteaza : langdetect\n+ langid
+    Detecteaza --> [*]
+}
+
+DetectareLimba --> Recuperare
+
+state Recuperare {
+    state "Paralel" as Par {
+        state Semantic
+        state CuvinteChei
+        state Web
+        --
+        [*] --> Semantic
+        [*] --> CuvinteChei
+        [*] --> Web
+    }
+}
+
+Recuperare --> Clasare
+
+state Clasare {
+    [*] --> Fuzionare
+    Fuzionare : RRF sau\nSumă Ponderată
+    Fuzionare --> Feedback
+    Feedback : Boost rating-uri
+    Feedback --> Filtrare
+    Filtrare : Scor minim\nSortare desc
+    Filtrare --> [*]
+}
+
+Clasare --> Verificare
+
+state Verificare {
+    [*] --> VerificaCalitate
+    VerificaCalitate : Similaritate\ntitlu/conținut
+    VerificaCalitate --> VerificaDomenii
+    VerificaDomenii : Listă blocate
+    VerificaDomenii --> [*]
+}
+
+Verificare --> Raspuns
+
+state Raspuns {
+    [*] --> ConstruiesteJSON
+    ConstruiesteJSON --> Paginare
+    Paginare --> [*]
+}
+
+Raspuns --> Inactiv : Gata
+
+note right of Clasare
+  RRF: scor = Σ w/(60+r)
+  Feedback: +0.1 boost
+end note
+
+note right of Verificare
+  Nepotrivire > 0.3
+  → avertisment clickbait
+end note
+
+@enduml

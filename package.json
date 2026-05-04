@@ -1,0 +1,20 @@
+{
+  "name": "hybrid-thesis-recommender-frontend",
+  "version": "1.0.0",
+  "description": "TypeScript frontend for Hybrid Thesis Recommender",
+  "scripts": {
+    "build": "tsc",
+    "watch": "tsc --watch",
+    "dev": "tsc --watch"
+  },
+  "devDependencies": {
+    "typescript": "^5.3.3"
+  },
+  "keywords": [
+    "typescript",
+    "academic",
+    "recommender"
+  ],
+  "author": "Cristiana",
+  "license": "MIT"
+}

@@ -1,0 +1,292 @@
+@startuml Hybrid Thesis Recommender - Class Diagram
+
+skinparam classAttributeIconSize 0
+skinparam backgroundColor #FEFEFE
+skinparam class {
+    BackgroundColor #FFFFFF
+    BorderColor #333333
+    ArrowColor #666666
+}
+
+' Data Models
+package "Data Models (models.py)" {
+    class Query {
+        +title: str
+        +abstract: str | None
+        +keywords: str | None
+        +combined_text(): str
+    }
+
+    class Article {
+        +id: str
+        +title: str
+        +abstract: str | None
+        +authors: list[str] | None
+        +year: int | None
+        +doi: str | None
+        +url: str | None
+        +language: str
+        +keywords: list[str] | None
+    }
+
+    class ScoredArticle {
+        +article: Article
+        +score: float
+    }
+
+    class RetrievalResult {
+        +items: list[ScoredArticle]
+        +source: str
+    }
+
+    class RawWebResult {
+        +title: str
+        +url: str
+        +snippet: str
+        +rank: int
+        +web_score: float
+        +keywords: list[str]
+    }
+
+    class WebRetrievalResult {
+        +items: list[RawWebResult]
+    }
+
+    class ArticleRecommendation {
+        +resource_type: str
+        +title: str
+        +authors: list[str]
+        +year: int | None
+        +abstract_snippet: str
+        +score: float
+        +doi: str | None
+        +url: str | None
+        +quality_warning: str | None
+        +item_id: str
+    }
+
+    class WebResourceRecommendation {
+        +resource_type: str
+        +title: str
+        +url: str
+        +snippet: str
+        +web_score: float
+        +keywords: list[str]
+        +quality_warning: str | None
+        +item_id: str
+    }
+
+    class FeedbackQueryResult {
+        +user_rating: int | None
+        +average_rating: float | None
+        +rating_count: int
+    }
+}
+
+' Configuration
+package "Configuration" {
+    class AppConfig {
+        +embedding_model: str
+        +vector_store_path: str
+        +bm25_index_path: str
+        +semantic_weight: float
+        +keyword_weight: float
+        +article_top_k: int
+        +web_top_k: int
+        +min_article_score: float
+        +min_web_score: float
+        +web_search_provider: str
+        +web_search_num_results: int
+        +bilingual_web_search: bool
+        +mismatch_threshold: float
+        +domain_blocklist: list[str]
+        +feedback_signal_enabled: bool
+        +feedback_signal_boost: float
+        +feedback_signal_min_rating: float
+        +fusion_strategy: str
+        +request_timeout_seconds: float
+    }
+
+    class ConfigManager {
+        -_config: AppConfig
+        -_observer: Observer
+        +get_config(): AppConfig
+        +reload_config(): void
+        -_on_config_change(): void
+    }
+}
+
+' Retrievers
+package "Retrievers" {
+    class SemanticRetriever {
+        -_article_store: ArticleStore
+        -_config: AppConfig
+        -_model: SentenceTransformer
+        +encode(text: str): ndarray
+        +retrieve(query: Query, top_k: int): RetrievalResult
+    }
+
+    class KeywordRetriever {
+        -_article_store: ArticleStore
+        -_config: AppConfig
+        -_bm25: BM25Okapi
+        +retrieve(query: Query, top_k: int): RetrievalResult
+        -_load_or_build_index(): BM25Okapi
+        -_tokenize(text: str): list[str]
+    }
+
+    class WebRetriever {
+        -_config: AppConfig
+        -_adapter: WebSearchAdapter
+        +retrieve(query: Query, language: str): WebRetrievalResult
+        -_search_bilingual(text: str, num: int): list[RawWebResult]
+    }
+
+    class AcademicWebRetriever {
+        -_timeout: float
+        +retrieve(query: Query, top_k: int): RetrievalResult
+        -_search_semantic_scholar(query: str, limit: int): list[ScoredArticle]
+        -_search_arxiv(query: str, limit: int): list[ScoredArticle]
+        -_extract_xml_tag(xml: str, tag: str): str
+    }
+
+    abstract class WebSearchAdapter {
+        +{abstract} search(query: str, num: int): list[RawWebResult]
+    }
+
+    class DuckDuckGoAdapter {
+        -_timeout: float
+        +search(query: str, num: int): list[RawWebResult]
+    }
+
+    class GoogleCSEAdapter {
+        -_config: AppConfig
+        +search(query: str, num: int): list[RawWebResult]
+    }
+
+    class BingSearchAdapter {
+        -_config: AppConfig
+        +search(query: str, num: int): list[RawWebResult]
+    }
+}
+
+' Rankers
+package "Rankers" {
+    class HybridRanker {
+        -_config: AppConfig
+        -_feedback_store: FeedbackStore
+        +fuse_articles(semantic: RetrievalResult, \n  keyword: RetrievalResult, top_k: int, \n  sem_weight: float, kw_weight: float): list[ArticleRecommendation]
+        +rank_web_resources(web: WebRetrievalResult, \n  top_k: int): list[WebResourceRecommendation]
+        -_rrf_score(sem_entry, kw_entry, sem_w, kw_w): float
+        -_weighted_sum_score(sem_entry, kw_entry, sem_w, kw_w): float
+        -_apply_feedback_boost(scored): list
+    }
+}
+
+' Verifiers
+package "Verifiers" {
+    class ContentVerifier {
+        -_retriever: SemanticRetriever
+        +verify(articles: list[ArticleRecommendation], \n  web: list[WebResourceRecommendation], \n  query_emb: ndarray, language: str, \n  config: AppConfig): tuple
+        -_verify_articles(articles, query_emb, warning, config): list
+        -_verify_web_resources(web, query_emb, warning, config): list
+    }
+}
+
+' Storage
+package "Storage" {
+    class ArticleStore {
+        -_db_path: str
+        -_index: faiss.Index
+        -_articles: list[Article]
+        +search_vector(query_emb: ndarray, k: int): list[ScoredArticle]
+        +get_all_articles_ordered(): list[Article]
+        +get_all_texts(): list[list[str]]
+        +add_article(article: Article): void
+        -_load_index(): faiss.Index
+        -_load_articles(): list[Article]
+    }
+
+    class FeedbackStore {
+        -_db_path: str
+        +upsert_rating(item_id: str, query: str, \n  rating: int, session_id: str): void
+        +get_ratings(item_id: str, session_id: str): FeedbackQueryResult
+        -_init_db(): void
+    }
+
+    class UserStore {
+        -_db_path: str
+        +create_user(username: str, email: str, password: str): int
+        +authenticate(username: str, password: str): int | None
+        +get_user(user_id: int): dict | None
+        +save_item(user_id: int, item_id: str, item_data: str): void
+        +get_saved_items(user_id: int): list[dict]
+        +delete_saved_item(user_id: int, item_id: str): bool
+        -_init_db(): void
+    }
+}
+
+' Relationships - Data Models
+Query "1" -- "1" RetrievalResult : produces
+Article "1" -- "*" ScoredArticle : scored as
+ScoredArticle "*" -- "1" RetrievalResult : contains
+RawWebResult "*" -- "1" WebRetrievalResult : contains
+Article "1" -- "1" ArticleRecommendation : transforms to
+RawWebResult "1" -- "1" WebResourceRecommendation : transforms to
+
+' Relationships - Configuration
+ConfigManager "1" -- "1" AppConfig : manages
+
+' Relationships - Retrievers
+SemanticRetriever "1" -- "1" ArticleStore : uses
+KeywordRetriever "1" -- "1" ArticleStore : uses
+WebRetriever "1" -- "1" WebSearchAdapter : uses
+WebSearchAdapter <|-- DuckDuckGoAdapter : implements
+WebSearchAdapter <|-- GoogleCSEAdapter : implements
+WebSearchAdapter <|-- BingSearchAdapter : implements
+
+SemanticRetriever ..> Query : retrieves for
+SemanticRetriever ..> RetrievalResult : produces
+KeywordRetriever ..> Query : retrieves for
+KeywordRetriever ..> RetrievalResult : produces
+WebRetriever ..> Query : retrieves for
+WebRetriever ..> WebRetrievalResult : produces
+AcademicWebRetriever ..> Query : retrieves for
+AcademicWebRetriever ..> RetrievalResult : produces
+
+' Relationships - Rankers
+HybridRanker ..> RetrievalResult : fuses
+HybridRanker ..> WebRetrievalResult : ranks
+HybridRanker ..> ArticleRecommendation : produces
+HybridRanker ..> WebResourceRecommendation : produces
+HybridRanker "1" -- "1" FeedbackStore : queries
+
+' Relationships - Verifiers
+ContentVerifier "1" -- "1" SemanticRetriever : uses encoder
+ContentVerifier ..> ArticleRecommendation : verifies
+ContentVerifier ..> WebResourceRecommendation : verifies
+
+' Relationships - Storage
+ArticleStore ..> Article : stores
+FeedbackStore ..> FeedbackQueryResult : returns
+UserStore ..> Article : saves references
+
+note right of HybridRanker
+  RRF Formula:
+  score = Σ weight/(k + rank)
+  where k = 60
+end note
+
+note right of ContentVerifier
+  Mismatch Detection:
+  sim(query, title) - sim(query, content)
+  > threshold → clickbait warning
+end note
+
+note bottom of ArticleStore
+  FAISS IndexFlatIP
+  768-dimensional vectors
+  Cosine similarity via inner product
+end note
+
+@enduml

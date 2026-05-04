@@ -1,0 +1,107 @@
+@startuml Hybrid Thesis Recommender - Class Diagram (Simplified)
+
+skinparam classAttributeIconSize 0
+skinparam backgroundColor #FEFEFE
+skinparam defaultFontSize 9
+skinparam class {
+    BackgroundColor #FFFFFF
+    BorderColor #333333
+    ArrowColor #666666
+}
+skinparam nodesep 15
+skinparam ranksep 30
+
+' Core Models
+class Query {
+    +title: str
+    +abstract: str
+    +keywords: str
+    +combined_text(): str
+}
+
+class Article {
+    +id: str
+    +title: str
+    +abstract: str
+    +authors: list[str]
+    +year: int
+    +doi: str
+    +url: str
+}
+
+class ScoredArticle {
+    +article: Article
+    +score: float
+}
+
+class RetrievalResult {
+    +items: list[ScoredArticle]
+    +source: str
+}
+
+' Retrievers
+class SemanticRetriever {
+    +encode(text): ndarray
+    +retrieve(query, k): Result
+}
+
+class KeywordRetriever {
+    +retrieve(query, k): Result
+}
+
+class WebRetriever {
+    +retrieve(query, lang): Result
+}
+
+' Ranker
+class HybridRanker {
+    +fuse_articles(...): list
+    +rank_web(...): list
+}
+
+' Verifier
+class ContentVerifier {
+    +verify(...): tuple
+}
+
+' Storage
+class ArticleStore {
+    +search_vector(emb, k): list
+    +get_all_articles(): list
+}
+
+class FeedbackStore {
+    +upsert_rating(...): void
+    +get_ratings(...): Result
+}
+
+' Relationships
+Query --> RetrievalResult
+Article --> ScoredArticle
+ScoredArticle --> RetrievalResult
+
+SemanticRetriever ..> Query
+SemanticRetriever ..> RetrievalResult
+SemanticRetriever --> ArticleStore
+
+KeywordRetriever ..> Query
+KeywordRetriever ..> RetrievalResult
+KeywordRetriever --> ArticleStore
+
+WebRetriever ..> Query
+
+HybridRanker ..> RetrievalResult
+HybridRanker --> FeedbackStore
+
+ContentVerifier --> SemanticRetriever
+
+note right of HybridRanker
+  RRF: score = Σ w/(60+rank)
+end note
+
+note right of ContentVerifier
+  Clickbait detection via
+  title/content similarity
+end note
+
+@enduml

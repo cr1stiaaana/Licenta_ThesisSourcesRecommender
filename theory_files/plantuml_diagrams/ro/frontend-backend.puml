@@ -1,0 +1,205 @@
+@startuml Hybrid Thesis Recommender - Arhitectură Frontend-Backend
+
+skinparam backgroundColor #FEFEFE
+skinparam defaultFontSize 10
+skinparam packageStyle rectangle
+skinparam nodesep 20
+skinparam ranksep 30
+
+title Arhitectură Frontend-Backend
+
+' Frontend
+package "Frontend (Client-Side)" #E1F5FF {
+    
+    package "Interfață Utilizator" {
+        [HTML5\nStructură Semantică] as HTML
+        [CSS3\nSuport Mod Întunecat] as CSS
+        [TypeScript\nModule ES2020] as TS
+    }
+    
+    package "Gestionare Stare" {
+        [Stare Locală] as State
+        [LocalStorage\nFallback] as Storage
+    }
+    
+    package "Client API" {
+        [Fetch API\nClient HTTP] as Fetch
+        [Gestionare Erori] as ErrorHandler
+        [Parser Răspuns] as Parser
+    }
+    
+    note right of TS
+        **Caracteristici Frontend:**
+        • Single Page Application
+        • Actualizări reactive UI
+        • Bilingv (RO/EN)
+        • Comutare mod întunecat
+        • Rating-uri cu stele
+        • Elemente salvate
+        • Paginare
+    end note
+}
+
+' Strat Comunicare
+package "Strat Comunicare" #FFF9E6 {
+    [REST API\nHTTP/JSON] as REST
+    [WebSocket\n(Viitor)] as WS
+    
+    note right of REST
+        **Endpoint-uri API:**
+        • POST /recommend
+        • POST /feedback
+        • GET /feedback/:id
+        • POST /auth/register
+        • POST /auth/login
+        • GET /saved
+        • POST /saved
+        • DELETE /saved/:id
+    end note
+}
+
+' Backend
+package "Backend (Server-Side)" #FFF4E1 {
+    
+    package "Strat API" {
+        [Aplicație Flask\nServer WSGI] as Flask
+        [Router Blueprint] as Router
+        [Validator Cereri] as Validator
+        [Serializator Răspuns] as Serializer
+    }
+    
+    package "Logică Business" {
+        [Detector Limbă\nlangdetect + langid] as LangDet
+        [Procesor Query] as QueryProc
+        [Agregator Rezultate] as Aggregator
+        [Manager Config\nHot-reload] as Config
+    }
+    
+    package "Servicii Recuperare" {
+        [Recuperator Semantic\nFAISS + Embeddings] as Semantic
+        [Recuperator Cuvinte Cheie\nBM25] as Keyword
+        [Recuperator Web\nDuckDuckGo] as Web
+        [Recuperator Academic\nScholar/arXiv] as Academic
+    }
+    
+    package "Servicii Procesare" {
+        [Ranker Hibrid\nFuziune RRF] as Ranker
+        [Verificator Conținut\nDetecție Clickbait] as Verifier
+        [Sistem Feedback\nBoost Rating] as Feedback
+    }
+    
+    package "Strat Acces Date" {
+        [Stocare Articole\nFAISS + SQLite] as ArticleStore
+        [Stocare Feedback\nSQLite] as FeedbackStore
+        [Stocare Utilizatori\nSQLite] as UserStore
+    }
+    
+    note right of Flask
+        **Caracteristici Backend:**
+        • API RESTful
+        • Procesare paralelă
+        • Degradare grațioasă
+        • Config hot-reload
+        • Gestionare sesiuni
+        • Gestionare erori
+        • Logging
+    end note
+}
+
+' Strat Date
+package "Strat Date" #F3E5F5 {
+    database "Index FAISS\nVectori 768-dim" as FAISS
+    database "Index BM25\nIndex inversat" as BM25
+    database "articles.db\nMetadata" as ArticlesDB
+    database "feedback.db\nRating-uri" as FeedbackDB
+    database "users.db\nConturi" as UsersDB
+}
+
+' Servicii Externe
+cloud "Servicii Externe" #FFE0B2 {
+    [API DuckDuckGo] as DDG
+    [Semantic Scholar] as Scholar
+    [API arXiv] as ArXiv
+}
+
+' Conexiuni Interne Frontend
+HTML --> TS
+CSS --> TS
+TS --> State
+TS --> Storage
+TS --> Fetch
+Fetch --> ErrorHandler
+Fetch --> Parser
+
+' Frontend la Comunicare
+Fetch --> REST : Cereri HTTP\nPayload JSON
+
+' Comunicare la Backend
+REST --> Flask : Rutare către\nBlueprint-uri
+
+' Strat API Backend
+Flask --> Router
+Router --> Validator
+Validator --> QueryProc
+
+' Logică Business Backend
+QueryProc --> LangDet
+QueryProc --> Semantic
+QueryProc --> Keyword
+QueryProc --> Web
+QueryProc --> Academic
+
+LangDet --> Config
+QueryProc --> Config
+
+' Recuperare Backend
+Semantic --> ArticleStore
+Keyword --> ArticleStore
+Web --> DDG
+Academic --> Scholar
+Academic --> ArXiv
+
+' Procesare Backend
+Semantic --> Ranker
+Keyword --> Ranker
+Web --> Ranker
+Academic --> Ranker
+
+Ranker --> Verifier
+Ranker --> Feedback
+Verifier --> Aggregator
+Aggregator --> Serializer
+
+' Acces Date Backend
+ArticleStore --> FAISS
+ArticleStore --> BM25
+ArticleStore --> ArticlesDB
+Feedback --> FeedbackStore
+FeedbackStore --> FeedbackDB
+Router --> UserStore
+UserStore --> UsersDB
+
+' Backend la Comunicare
+Serializer --> REST : Răspuns JSON
+
+' Comunicare la Frontend
+REST --> Parser : Răspuns HTTP
+
+' Actualizare Stare Frontend
+Parser --> State : Actualizare UI
+
+' Note Flux Date
+note bottom of REST
+    **Flux Cerere:**
+    1. Acțiune utilizator → Event TypeScript
+    2. Fetch API → Cerere HTTP
+    3. Router Flask → Blueprint
+    4. Recuperare paralelă (4 surse)
+    5. Clasare hibridă + verificare
+    6. Serializare JSON
+    7. Răspuns → Actualizare UI
+    
+    **Latență Medie:** ~850ms
+end note
+
+@enduml

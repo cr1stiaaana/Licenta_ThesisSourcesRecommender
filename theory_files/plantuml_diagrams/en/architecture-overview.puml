@@ -1,0 +1,146 @@
+@startuml Hybrid Thesis Recommender - Architecture Overview
+
+skinparam backgroundColor #FEFEFE
+skinparam defaultFontSize 10
+skinparam packageStyle rectangle
+skinparam nodesep 15
+skinparam ranksep 25
+
+title Hybrid Thesis Recommender - System Architecture
+
+' Client Layer
+package "Client Layer" #E1F5FF {
+    [Web Browser] as Browser
+    [TypeScript App] as TS
+    note right of TS
+        • React-like UI
+        • Dark mode
+        • Bilingual (RO/EN)
+        • LocalStorage fallback
+    end note
+}
+
+' Application Layer
+package "Application Layer" #FFF4E1 {
+    [Flask REST API] as Flask
+    [Language Detector] as LangDet
+    [Config Manager] as Config
+    [I18n Module] as I18n
+    
+    note right of Flask
+        • Blueprint architecture
+        • Hot-reload config
+        • Graceful degradation
+    end note
+}
+
+' Retrieval Layer
+package "Retrieval Layer" #E8F5E9 {
+    [Semantic Retriever\n(FAISS)] as Semantic
+    [Keyword Retriever\n(BM25)] as Keyword
+    [Web Retriever\n(DuckDuckGo)] as Web
+    [Academic Retriever\n(Scholar/arXiv)] as Academic
+    
+    note right of Semantic
+        • 768-dim embeddings
+        • mpnet-base-v2
+        • Cosine similarity
+    end note
+}
+
+' Processing Layer
+package "Processing Layer" #FFF3E0 {
+    [Hybrid Ranker\n(RRF)] as Ranker
+    [Content Verifier\n(Clickbait)] as Verifier
+    [Feedback System] as Feedback
+    
+    note right of Ranker
+        • RRF fusion
+        • Weighted sum
+        • Feedback boost
+    end note
+}
+
+' Storage Layer
+package "Storage Layer" #F3E5F5 {
+    database "FAISS Index\n768-dim vectors\n~500MB" as FAISS
+    database "BM25 Index\nInverted index\n~50MB" as BM25
+    database "SQLite DBs\narticles + feedback\n~30MB" as SQLite
+    
+    note right of FAISS
+        • IndexFlatIP
+        • Normalized vectors
+        • Fast similarity search
+    end note
+}
+
+' External Services
+cloud "External Services" #FFE0B2 {
+    [DuckDuckGo API] as DDG
+    [Google CSE] as Google
+    [Bing API] as Bing
+    [Semantic Scholar] as Scholar
+    [arXiv API] as ArXiv
+}
+
+' Connections - Client to App
+Browser --> TS : renders
+TS --> Flask : HTTP/REST\nport 5000
+
+' Connections - App Layer
+Flask --> LangDet : detect language
+Flask --> Config : read config
+Flask --> I18n : translate
+
+' Connections - Retrieval
+Flask --> Semantic : query
+Flask --> Keyword : query
+Flask --> Web : query
+Flask --> Academic : query
+
+' Connections - Storage
+Semantic --> FAISS : vector search
+Keyword --> BM25 : keyword search
+Semantic --> SQLite : metadata
+Keyword --> SQLite : metadata
+
+' Connections - External
+Web --> DDG : search
+Web --> Google : search
+Web --> Bing : search
+Academic --> Scholar : search
+Academic --> ArXiv : search
+
+' Connections - Processing
+Semantic --> Ranker : results
+Keyword --> Ranker : results
+Web --> Ranker : results
+Academic --> Ranker : results
+
+Ranker --> Verifier : ranked results
+Ranker --> Feedback : query ratings
+Feedback --> SQLite : store/retrieve
+
+Verifier --> Flask : verified results
+Flask --> TS : JSON response
+
+' Key Features
+note bottom of Browser
+    **Key Features:**
+    • Hybrid search (semantic + keyword)
+    • Live web & academic search
+    • Quality verification
+    • User feedback system
+    • Bilingual support (RO/EN)
+end note
+
+' Performance Metrics
+note bottom of Ranker
+    **Performance:**
+    • Response time: <1s (avg 850ms)
+    • Parallel retrieval
+    • Configurable weights
+    • Hot-reload config
+end note
+
+@enduml

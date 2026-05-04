@@ -1,0 +1,133 @@
+@startuml Hybrid Thesis Recommender - Flux Feedback
+
+skinparam backgroundColor #FEFEFE
+skinparam defaultFontSize 9
+skinparam sequenceMessageAlign center
+
+actor Utilizator
+participant "Browser\n(TypeScript)" as Browser
+participant "API Flask\n(api.py)" as API
+participant "Blueprint\nFeedback" as FeedbackBP
+participant "Stocare\nFeedback" as FeedbackStore
+participant "Bază Date\n(feedback.db)" as DB
+
+== Trimitere Rating ==
+
+Utilizator -> Browser: Click rating stele\n(4 stele)
+activate Browser
+
+Browser -> Browser: Actualizează UI\n(umple stele)
+
+Browser -> API: POST /feedback\n{id_element, query, rating: 4,\nid_sesiune}
+activate API
+
+API -> FeedbackBP: gestioneaza_feedback()
+activate FeedbackBP
+
+FeedbackBP -> FeedbackBP: Validează rating\n(trebuie să fie 1-5)
+
+alt Rating valid
+    FeedbackBP -> FeedbackStore: actualizeaza_rating(id_element,\nquery, rating, id_sesiune)
+    activate FeedbackStore
+    
+    FeedbackStore -> DB: INSERT OR REPLACE INTO ratings\nVALUES (id_element, id_sesiune,\nquery, rating, timestamp)
+    activate DB
+    
+    note right of DB
+      Schemă:
+      - id_element (TEXT)
+      - id_sesiune (TEXT)
+      - query (TEXT)
+      - rating (INTEGER)
+      - actualizat_la (TIMESTAMP)
+      
+      Cheie Primară: (id_element, id_sesiune)
+    end note
+    
+    DB --> FeedbackStore: Succes
+    deactivate DB
+    
+    FeedbackStore --> FeedbackBP: OK
+    deactivate FeedbackStore
+    
+    FeedbackBP --> API: {mesaj: "Rating salvat."}
+    deactivate FeedbackBP
+    
+    API --> Browser: HTTP 200 OK\n{mesaj: "Rating salvat."}
+    deactivate API
+    
+    Browser -> Browser: Arată notificare\nsucces
+    
+else Rating invalid
+    FeedbackBP --> API: {eroare: "Rating invalid"}
+    API --> Browser: HTTP 400 Bad Request
+    Browser -> Browser: Arată mesaj eroare
+end
+
+Browser --> Utilizator: Confirmă rating salvat
+deactivate Browser
+
+== Obținere Rating-uri Agregate ==
+
+Utilizator -> Browser: Vizualizează detalii articol
+activate Browser
+
+Browser -> API: GET /feedback/{id_element}\n?id_sesiune={id_sesiune}
+activate API
+
+API -> FeedbackBP: obtine_feedback()
+activate FeedbackBP
+
+FeedbackBP -> FeedbackStore: obtine_rating_uri(id_element, id_sesiune)
+activate FeedbackStore
+
+FeedbackStore -> DB: SELECT rating\nFROM ratings\nWHERE id_element = ?\nAND id_sesiune = ?
+activate DB
+DB --> FeedbackStore: rating_utilizator (sau NULL)
+deactivate DB
+
+FeedbackStore -> DB: SELECT AVG(rating),\nCOUNT(*)\nFROM ratings\nWHERE id_element = ?
+activate DB
+DB --> FeedbackStore: (rating_mediu, numar)
+deactivate DB
+
+FeedbackStore -> FeedbackStore: Construiește FeedbackQueryResult\n{rating_utilizator, rating_mediu,\nnumar_rating_uri}
+
+FeedbackStore --> FeedbackBP: FeedbackQueryResult
+deactivate FeedbackStore
+
+FeedbackBP --> API: {rating_utilizator: 4,\nmediu: 3.7,\nnumar: 12}
+deactivate FeedbackBP
+
+API --> Browser: HTTP 200 OK\nRăspuns JSON
+deactivate API
+
+Browser -> Browser: Randează afișare rating\n"★★★★☆ (12 rating-uri)"\n"Rating-ul tău: ★★★★☆"
+
+Browser --> Utilizator: Afișează rating-uri
+deactivate Browser
+
+== Semnal Feedback în Clasare ==
+
+note over Utilizator, DB
+  Când feedback_signal_enabled = true:
+  
+  1. Ranker-ul Hibrid interoghează FeedbackStore
+     pentru toate id-urile candidate
+  
+  2. Pentru elemente cu rating_mediu >= 4.0:
+     scor_boostat = scor_rrf + 
+                    0.1 * (rating_mediu - 1) / 4
+  
+  3. Elementele cu rating-uri mari primesc
+     boost în clasare (max +0.1)
+  
+  Exemplu:
+  - Articol A: RRF=0.5, rating_mediu=4.5
+    → boostat = 0.5 + 0.1*(3.5/4) = 0.5875
+  
+  - Articol B: RRF=0.6, rating_mediu=3.0
+    → boostat = 0.6 (fără boost, sub prag)
+end note
+
+@enduml

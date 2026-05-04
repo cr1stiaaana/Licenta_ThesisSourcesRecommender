@@ -1,0 +1,199 @@
+@startuml Hybrid Thesis Recommender - Backend Layered Architecture
+
+skinparam backgroundColor #FEFEFE
+skinparam defaultFontSize 9
+skinparam packageStyle rectangle
+skinparam nodesep 15
+skinparam ranksep 25
+
+title Backend Layered Architecture (7 Layers)
+
+' Layer 1: API Gateway
+package "Layer 1: API Gateway" #E3F2FD {
+    [Flask WSGI Server\nPort 5000] as WSGI
+    [Blueprint Router] as Router
+    [CORS Handler] as CORS
+    [Session Manager] as Session
+    
+    note right of WSGI
+        **Responsibilities:**
+        • HTTP request handling
+        • Route dispatching
+        • Session management
+        • CORS configuration
+    end note
+}
+
+' Layer 2: Request Processing
+package "Layer 2: Request Processing" #F3E5F5 {
+    [Input Validator] as Validator
+    [Request Parser] as ReqParser
+    [Authentication] as Auth
+    [Authorization] as Authz
+    
+    note right of Validator
+        **Validation Rules:**
+        • Query length: 3-500 chars
+        • Rating range: 1-5
+        • SQL injection prevention
+        • XSS sanitization
+    end note
+}
+
+' Layer 3: Business Logic
+package "Layer 3: Business Logic" #FFF3E0 {
+    [Query Orchestrator] as Orchestrator
+    [Language Detector\nlangdetect + langid] as LangDet
+    [Config Manager\nwatchdog hot-reload] as Config
+    [I18n Module\nRO/EN] as I18n
+    
+    note right of Orchestrator
+        **Orchestration:**
+        • Parallel retrieval
+        • Timeout management
+        • Error aggregation
+        • Result merging
+    end note
+}
+
+' Layer 4: Retrieval Services
+package "Layer 4: Retrieval Services" #E8F5E9 {
+    [Semantic Retriever\nFAISS + mpnet-base-v2] as Semantic
+    [Keyword Retriever\nBM25 Okapi] as Keyword
+    [Web Retriever\nDuckDuckGo/Google/Bing] as Web
+    [Academic Retriever\nScholar + arXiv] as Academic
+    
+    note right of Semantic
+        **Retrieval Strategy:**
+        • Parallel execution
+        • Top-K selection (20)
+        • Score normalization
+        • Graceful degradation
+    end note
+}
+
+' Layer 5: Processing Services
+package "Layer 5: Processing Services" #FFF9C4 {
+    [Hybrid Ranker\nRRF + Weighted Sum] as Ranker
+    [Content Verifier\nClickbait Detection] as Verifier
+    [Feedback Aggregator\nRating Boost] as FeedbackAgg
+    [Deduplicator\nDOI + Title] as Dedup
+    
+    note right of Ranker
+        **Ranking Algorithms:**
+        • RRF: score = Σ w/(60+rank)
+        • Weighted Sum: w1*s1 + w2*s2
+        • Feedback boost: +0.1 max
+        • Min score filtering
+    end note
+}
+
+' Layer 6: Data Access Layer
+package "Layer 6: Data Access Layer" #E1BEE7 {
+    [Article Store\nFAISS + SQLite] as ArticleStore
+    [Feedback Store\nSQLite] as FeedbackStore
+    [User Store\nSQLite] as UserStore
+    [Cache Manager\n(Future: Redis)] as Cache
+    
+    note right of ArticleStore
+        **Data Operations:**
+        • Vector search (FAISS)
+        • Keyword search (BM25)
+        • Metadata retrieval
+        • Transaction management
+    end note
+}
+
+' Layer 7: Storage Layer
+package "Layer 7: Storage Layer" #FFCCBC {
+    database "FAISS Index\nIndexFlatIP\n768-dim vectors\n~500MB" as FAISS
+    database "BM25 Index\nPickle serialized\nInverted index\n~50MB" as BM25
+    database "articles.db\nSQLite\nMetadata\n~20MB" as ArticlesDB
+    database "feedback.db\nSQLite\nRatings\n~5MB" as FeedbackDB
+    database "users.db\nSQLite\nAccounts\n~5MB" as UsersDB
+    
+    note right of FAISS
+        **Storage Details:**
+        • FAISS: Inner product index
+        • BM25: Tokenized corpus
+        • SQLite: ACID compliance
+        • File-based storage
+    end note
+}
+
+' External Services (Side)
+cloud "External Services" #FFE0B2 {
+    [DuckDuckGo API\nNo key required] as DDG
+    [Google CSE\nAPI key required] as Google
+    [Bing API\nAPI key required] as Bing
+    [Semantic Scholar\nFree API] as Scholar
+    [arXiv API\nFree XML] as ArXiv
+}
+
+' Vertical Flow - Request Path
+WSGI --> Router : 1. Route request
+Router --> Validator : 2. Validate input
+Validator --> Auth : 3. Authenticate
+Auth --> Orchestrator : 4. Process query
+
+Orchestrator --> LangDet : 5. Detect language
+Orchestrator --> Config : 6. Load config
+
+Orchestrator --> Semantic : 7a. Parallel retrieval
+Orchestrator --> Keyword : 7b. Parallel retrieval
+Orchestrator --> Web : 7c. Parallel retrieval
+Orchestrator --> Academic : 7d. Parallel retrieval
+
+Semantic --> ArticleStore : 8a. Query FAISS
+Keyword --> ArticleStore : 8b. Query BM25
+Web --> DDG : 8c. External API
+Academic --> Scholar : 8d. External API
+Academic --> ArXiv : 8e. External API
+
+Semantic --> Ranker : 9a. Results
+Keyword --> Ranker : 9b. Results
+Web --> Ranker : 9c. Results
+Academic --> Ranker : 9d. Results
+
+Ranker --> Dedup : 10. Deduplicate
+Dedup --> FeedbackAgg : 11. Apply feedback
+FeedbackAgg --> FeedbackStore : 12. Query ratings
+FeedbackStore --> FeedbackDB : 13. Read ratings
+
+FeedbackAgg --> Verifier : 14. Verify quality
+Verifier --> Orchestrator : 15. Verified results
+
+Orchestrator --> WSGI : 16. Serialize response
+
+' Data Access Connections
+ArticleStore --> FAISS : Vector search
+ArticleStore --> BM25 : Keyword search
+ArticleStore --> ArticlesDB : Metadata
+UserStore --> UsersDB : User data
+
+' Cross-Layer Notes
+note bottom of WSGI
+    **Request Flow (Top to Bottom):**
+    1. HTTP Request → API Gateway
+    2. Validation & Auth → Request Processing
+    3. Orchestration → Business Logic
+    4. Parallel Retrieval → Retrieval Services
+    5. Ranking & Verification → Processing Services
+    6. Data Queries → Data Access Layer
+    7. Storage Operations → Storage Layer
+    
+    **Response Flow (Bottom to Top):**
+    Results bubble up through layers
+    with transformations at each level
+end note
+
+note bottom of FAISS
+    **Layer Characteristics:**
+    • Each layer has single responsibility
+    • Loose coupling between layers
+    • Clear interfaces and contracts
+    • Testable in isolation
+    • Scalable horizontally
+end note
+
+@enduml

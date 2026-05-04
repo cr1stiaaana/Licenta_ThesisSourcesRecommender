@@ -1,0 +1,16 @@
+﻿{
+  "mcpServers": {
+    "sqlite": {
+      "command": "uvx",
+      "args": ["mcp-server-sqlite", "--db-path", "E:/0 - ETTI/AN 4/LICENTA/article-recommender/data/articles.db"],
+      "disabled": false,
+      "autoApprove": ["read_query", "list_tables", "describe_table"]
+    },
+    "fetch": {
+      "command": "uvx",
+      "args": ["mcp-server-fetch"],
+      "disabled": false,
+      "autoApprove": ["fetch"]
+    }
+  }
+}

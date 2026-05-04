@@ -1,0 +1,216 @@
+@startuml Hybrid Thesis Recommender - Query State Diagram
+
+skinparam backgroundColor #FEFEFE
+skinparam state {
+    BackgroundColor #FFFFFF
+    BorderColor #333333
+    ArrowColor #666666
+}
+
+title Query Processing State Machine
+
+[*] --> Idle : Application starts
+
+state Idle {
+    [*] --> WaitingForInput
+    WaitingForInput : User viewing UI
+    WaitingForInput : Form fields empty
+}
+
+Idle --> Validating : User submits query
+
+state Validating {
+    [*] --> CheckLength
+    CheckLength : Validate 3-500 chars
+    CheckLength --> CheckContent : Length OK
+    CheckLength --> [*] : Length invalid
+    CheckContent : Check non-empty
+    CheckContent --> [*] : Valid
+    CheckContent --> [*] : Invalid
+}
+
+Validating --> Idle : Validation failed\n(show error)
+Validating --> LanguageDetection : Validation passed
+
+state LanguageDetection {
+    [*] --> DetectWithLangDetect
+    DetectWithLangDetect : Primary detector
+    DetectWithLangDetect --> DetectWithLangID : Confidence < 0.7
+    DetectWithLangDetect --> [*] : Confidence >= 0.7
+    DetectWithLangID : Fallback detector
+    DetectWithLangID --> [*] : Language detected
+}
+
+LanguageDetection --> Retrieving : Language = "ro" or "en"
+
+state Retrieving {
+    [*] --> ParallelRetrieval
+    
+    state ParallelRetrieval {
+        state SemanticSearch {
+            [*] --> EncodeQuery
+            EncodeQuery : Generate 768-dim vector
+            EncodeQuery --> SearchFAISS
+            SearchFAISS : Find top-20 similar
+            SearchFAISS --> [*]
+        }
+        
+        state KeywordSearch {
+            [*] --> TokenizeQuery
+            TokenizeQuery : Split & lowercase
+            TokenizeQuery --> ScoreBM25
+            ScoreBM25 : Rank by TF-IDF
+            ScoreBM25 --> [*]
+        }
+        
+        state WebSearch {
+            [*] --> CallWebAPI
+            CallWebAPI : DuckDuckGo/Google/Bing
+            CallWebAPI --> ParseResults : Success
+            CallWebAPI --> [*] : Timeout/Error
+            ParseResults --> [*]
+        }
+        
+        state AcademicSearch {
+            [*] --> CallSemanticScholar
+            CallSemanticScholar --> CallArXiv
+            CallArXiv --> MergeResults
+            MergeResults --> [*]
+        }
+        
+        --
+        [*] --> SemanticSearch
+        [*] --> KeywordSearch
+        [*] --> WebSearch
+        [*] --> AcademicSearch
+        
+        SemanticSearch --> [*]
+        KeywordSearch --> [*]
+        WebSearch --> [*]
+        AcademicSearch --> [*]
+    }
+    
+    ParallelRetrieval --> [*] : All retrievers complete
+}
+
+Retrieving --> Ranking : Results collected
+
+state Ranking {
+    [*] --> FuseResults
+    
+    state FuseResults {
+        [*] --> BuildRankMaps
+        BuildRankMaps : Deduplicate by DOI/title
+        BuildRankMaps --> ComputeScores
+        
+        state ComputeScores <<choice>>
+        ComputeScores --> RRFScoring : strategy = "rrf"
+        ComputeScores --> WeightedSum : strategy = "weighted_sum"
+        
+        RRFScoring : score = Σ w/(60+rank)
+        WeightedSum : score = w1*s1 + w2*s2
+        
+        RRFScoring --> ApplyFeedback
+        WeightedSum --> ApplyFeedback
+        
+        state ApplyFeedback <<choice>>
+        ApplyFeedback --> QueryFeedback : feedback_enabled = true
+        ApplyFeedback --> FilterScores : feedback_enabled = false
+        
+        QueryFeedback : Boost high-rated items
+        QueryFeedback --> FilterScores
+        
+        FilterScores : Remove low scores
+        FilterScores --> SortResults
+        SortResults : Descending order
+        SortResults --> [*]
+    }
+    
+    FuseResults --> [*]
+}
+
+Ranking --> Verifying : Ranked results ready
+
+state Verifying {
+    [*] --> CheckArticles
+    
+    state CheckArticles {
+        [*] --> EncodeTitle
+        EncodeTitle --> EncodeContent
+        EncodeContent --> ComputeSimilarity
+        ComputeSimilarity --> CheckMismatch
+        
+        state CheckMismatch <<choice>>
+        CheckMismatch --> FlagClickbait : mismatch > 0.3
+        CheckMismatch --> KeepAsIs : mismatch <= 0.3
+        
+        FlagClickbait : Add quality warning\nPenalize score
+        FlagClickbait --> [*]
+        KeepAsIs --> [*]
+    }
+    
+    CheckArticles --> CheckWebResources
+    
+    state CheckWebResources {
+        [*] --> CheckBlocklist
+        
+        state CheckBlocklist <<choice>>
+        CheckBlocklist --> ExcludeResult : Domain blocked
+        CheckBlocklist --> CheckWebMismatch : Domain OK
+        
+        ExcludeResult --> [*]
+        
+        CheckWebMismatch --> FlagWebClickbait : mismatch > 0.3
+        CheckWebMismatch --> KeepWebAsIs : mismatch <= 0.3
+        
+        FlagWebClickbait : Add quality warning
+        FlagWebClickbait --> [*]
+        KeepWebAsIs --> [*]
+    }
+    
+    CheckWebResources --> [*]
+}
+
+Verifying --> Responding : Verification complete
+
+state Responding {
+    [*] --> BuildJSON
+    BuildJSON : Serialize results
+    BuildJSON --> ApplyPagination
+    ApplyPagination : Offset + limit
+    ApplyPagination --> AddMetadata
+    AddMetadata : Query language,\ntimestamp, counts
+    AddMetadata --> [*]
+}
+
+Responding --> Idle : Response sent\n(ready for next query)
+
+note right of Retrieving
+  Timeout Handling:
+  - Component timeout: 18s
+  - Request timeout: 20s
+  - Failed retrievers don't
+    block the response
+end note
+
+note right of Ranking
+  RRF Formula:
+  score(d) = Σ weight/(k + rank(d))
+  where k = 60
+  
+  Feedback Boost:
+  boost = 0.1 * (rating - 1) / 4
+  (for ratings >= 4.0)
+end note
+
+note right of Verifying
+  Clickbait Detection:
+  sim(query, title) - sim(query, content)
+  
+  If mismatch > 0.3:
+  - Add warning
+  - Penalize score
+  - May exclude if score too low
+end note
+
+@enduml

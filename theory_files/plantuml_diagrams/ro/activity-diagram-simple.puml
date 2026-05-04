@@ -1,0 +1,62 @@
+@startuml Ingestie Articole (Simplificat)
+
+skinparam backgroundColor #FEFEFE
+skinparam defaultFontSize 9
+skinparam activityBackgroundColor #FFFFFF
+
+title Pipeline Ingestie Articole
+
+start
+
+:Rulează comanda ingestie;
+note right: python app/main.py ingest
+
+:Parsează argumente;
+
+if (Fișier există?) then (da)
+  :Citește fișier;
+else (nu)
+  :Eroare;
+  stop
+endif
+
+if (Format valid?) then (da)
+  if (JSON?) then (da)
+    :Parsează JSON;
+  elseif (CSV?) then (da)
+    :Parsează CSV;
+  else (BibTeX)
+    :Parsează BibTeX;
+  endif
+else (nu)
+  :Eroare;
+  stop
+endif
+
+:Creează obiecte Article;
+
+:Validează articole\n(titlu, lungime);
+
+if (Articole valide > 0?) then (da)
+  
+  :Stochează în SQLite\n(articles.db);
+  
+  fork
+    :Construiește Index FAISS;
+    :Codifică cu\nSentenceTransformer;
+    :Salvează faiss.index;
+  fork again
+    :Construiește Index BM25;
+    :Tokenizează corpus;
+    :Salvează bm25.pkl;
+  end fork
+  
+  :Mesaj succes;
+  
+else (nu)
+  :Avertisment;
+endif
+
+stop
+
+@enduml

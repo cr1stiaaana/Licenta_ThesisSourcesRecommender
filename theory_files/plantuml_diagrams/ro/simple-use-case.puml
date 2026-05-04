@@ -1,0 +1,31 @@
+@startuml Diagrama Use Case - Hybrid Thesis Recommender
+
+skinparam backgroundColor #FFFFFF
+skinparam defaultFontSize 14
+skinparam actorFontSize 14
+skinparam usecaseFontSize 13
+skinparam shadowing false
+
+title Diagrama de cazuri de utilizare (Use Case) pentru aplicație
+
+left to right direction
+
+actor Utilizator
+
+rectangle "Hybrid Thesis Recommender" {
+  usecase "Caută articole" as UC1
+  usecase "Salvează articole" as UC2
+  usecase "Dă rating articolelor" as UC3
+  usecase "Vizualizează rezultate" as UC4
+  usecase "Schimbă limba (RO/EN)" as UC5
+  usecase "Activează mod întunecat" as UC6
+}
+
+Utilizator --> UC1
+Utilizator --> UC2
+Utilizator --> UC3
+Utilizator --> UC4
+Utilizator --> UC5
+Utilizator --> UC6
+
+@enduml

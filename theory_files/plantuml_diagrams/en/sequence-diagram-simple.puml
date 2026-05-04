@@ -1,0 +1,79 @@
+@startuml Hybrid Thesis Recommender - Recommendation Flow (Simplified)
+
+skinparam backgroundColor #FEFEFE
+skinparam defaultFontSize 9
+skinparam sequenceMessageAlign center
+
+actor User
+participant "Browser" as B
+participant "API" as API
+participant "Semantic" as Sem
+participant "Keyword" as Kw
+participant "Web" as Web
+participant "Ranker" as Rank
+participant "Verifier" as Ver
+
+User -> B: Enter query
+activate B
+
+B -> API: POST /recommend
+activate API
+
+API -> API: Validate\nDetect language
+
+== Parallel Retrieval ==
+
+par
+    API -> Sem: retrieve(query, 20)
+    activate Sem
+    Sem -> Sem: Encode query\nSearch FAISS
+    Sem --> API: Results
+    deactivate Sem
+else
+    API -> Kw: retrieve(query, 20)
+    activate Kw
+    Kw -> Kw: Tokenize\nScore BM25
+    Kw --> API: Results
+    deactivate Kw
+else
+    API -> Web: retrieve(query)
+    activate Web
+    Web -> Web: DuckDuckGo\nAPI call
+    Web --> API: Results
+    deactivate Web
+end
+
+== Fusion & Ranking ==
+
+API -> Rank: fuse_articles(...)
+activate Rank
+Rank -> Rank: RRF scoring\nFeedback boost\nFilter & sort
+Rank --> API: Ranked list
+deactivate Rank
+
+== Verification ==
+
+API -> Ver: verify(...)
+activate Ver
+Ver -> Ver: Check quality\nDetect clickbait\nFilter domains
+Ver --> API: Verified results
+deactivate Ver
+
+API --> B: JSON response
+deactivate API
+
+B -> B: Render results
+B --> User: Display
+deactivate B
+
+note over Sem, Kw
+  Parallel execution
+  reduces latency
+end note
+
+note over Rank
+  RRF Formula:
+  score = Σ w/(60+rank)
+end note
+
+@enduml

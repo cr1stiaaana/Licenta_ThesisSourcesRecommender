@@ -1,0 +1,24 @@
+@startuml Diagrama de Arhitectură Web - Hybrid Thesis Recommender
+
+skinparam backgroundColor #FFFFFF
+skinparam defaultFontSize 14
+skinparam rectangleFontSize 14
+skinparam arrowFontSize 12
+skinparam packageStyle rectangle
+skinparam shadowing false
+
+title Diagrama de arhitectură a aplicației web
+
+actor Utilizator
+
+rectangle "Frontend (Client)\nTypeScript, HTML, CSS" as Frontend #E8F5E9
+rectangle "Backend (Server)\nPython, Flask" as Backend #BBDEFB
+database "Baze de Date\nFAISS, SQLite" as DB #FFE0B2
+
+Utilizator --> Frontend
+Frontend --> Backend : API Call (JSON)
+Backend --> Frontend : Răspuns (JSON)
+Backend --> DB : Interogare
+DB --> Backend : Rezultate
+
+@enduml

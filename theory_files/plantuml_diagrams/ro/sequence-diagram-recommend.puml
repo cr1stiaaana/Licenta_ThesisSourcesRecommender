@@ -1,0 +1,178 @@
+@startuml Hybrid Thesis Recommender - Flux Recomandare Complet
+
+skinparam backgroundColor #FEFEFE
+skinparam defaultFontSize 9
+skinparam sequenceMessageAlign center
+
+actor Utilizator
+participant "Browser\n(TypeScript)" as Browser
+participant "API Flask\n(api.py)" as API
+participant "Detector\nLimbă" as LangDetect
+participant "Recuperator\nSemantic" as Semantic
+participant "Recuperator\nCuvinte Cheie" as Keyword
+participant "Recuperator\nWeb" as Web
+participant "Recuperator\nAcademic" as Academic
+participant "Ranker\nHibrid" as Ranker
+participant "Verificator\nConținut" as Verifier
+participant "Index\nFAISS" as FAISS
+participant "Index\nBM25" as BM25
+participant "Stocare\nFeedback" as Feedback
+
+Utilizator -> Browser: Introduce titlu teză\n"Rețele neuronale pentru NLP"
+activate Browser
+
+Browser -> API: POST /recommend\n{titlu, rezumat, cuvinte_cheie}
+activate API
+
+API -> API: Validare input\n(3-500 caractere)
+
+API -> LangDetect: detecteaza(text_query)
+activate LangDetect
+LangDetect --> API: "ro"
+deactivate LangDetect
+
+API -> API: Creează obiect Query
+
+== Faza Recuperare Paralelă ==
+
+par Căutare Semantică
+    API -> Semantic: recupereaza(query, top_k=20)
+    activate Semantic
+    Semantic -> Semantic: codifica(query.text_combinat())
+    note right: Vector 768-dim\nNormalizat L2
+    Semantic -> FAISS: cautare_vector(embedding, k=20)
+    activate FAISS
+    FAISS --> Semantic: top-20 articole + scoruri
+    deactivate FAISS
+    Semantic --> API: RetrievalResult(semantic)
+    deactivate Semantic
+else Căutare Cuvinte Cheie
+    API -> Keyword: recupereaza(query, top_k=20)
+    activate Keyword
+    Keyword -> Keyword: tokenizeaza(query.text_combinat())
+    Keyword -> BM25: obtine_scoruri(tokeni)
+    activate BM25
+    BM25 --> Keyword: Scoruri BM25
+    deactivate BM25
+    Keyword -> Keyword: normalizeaza scoruri\n(scor_max = 1.0)
+    Keyword --> API: RetrievalResult(keyword)
+    deactivate Keyword
+else Căutare Web
+    API -> Web: recupereaza(query, limba="ro")
+    activate Web
+    Web -> Web: Apel API DuckDuckGo
+    note right: Timeout: 10s\nMax rezultate: 50
+    Web --> API: WebRetrievalResult
+    deactivate Web
+else Căutare Academică
+    API -> Academic: recupereaza(query, top_k=20)
+    activate Academic
+    par Semantic Scholar
+        Academic -> Academic: cauta_semantic_scholar()
+        note right: API: semanticscholar.org\nCâmpuri: titlu, rezumat,\nautori, an, DOI
+    else arXiv
+        Academic -> Academic: cauta_arxiv()
+        note right: API: export.arxiv.org\nFormat: XML\nSortare: relevanță
+    end
+    Academic --> API: RetrievalResult(academic)
+    deactivate Academic
+end
+
+== Faza Fuziune & Clasare ==
+
+API -> Ranker: fuzionare_articole(semantic, keyword,\ntop_k=10, w_sem=0.6, w_kw=0.4)
+activate Ranker
+
+Ranker -> Ranker: Construiește hărți rang\n(deduplicare după DOI/titlu)
+
+alt Strategie Fuziune = RRF
+    Ranker -> Ranker: Scor RRF\nscor = Σ pondere/(60 + rang)
+else Strategie Fuziune = Sumă Ponderată
+    Ranker -> Ranker: Sumă ponderată\nscor = w1*s1 + w2*s2
+end
+
+alt Semnal Feedback Activat
+    Ranker -> Feedback: obtine_rating_uri(id_elemente)
+    activate Feedback
+    Feedback --> Ranker: rating-uri medii
+    deactivate Feedback
+    Ranker -> Ranker: Aplică boost feedback\nscor += boost * (rating-1)/4
+end
+
+Ranker -> Ranker: Filtrează după scor_min_articol\nSortare descrescătoare\nIa top-10
+
+Ranker --> API: list[ArticleRecommendation]
+deactivate Ranker
+
+API -> Ranker: clasare_resurse_web(web, top_k=10)
+activate Ranker
+Ranker -> Ranker: Filtrează după scor_min_web\nSortare după scor_web desc
+Ranker --> API: list[WebResourceRecommendation]
+deactivate Ranker
+
+== Faza Verificare ==
+
+API -> Semantic: codifica(query.text_combinat())
+activate Semantic
+Semantic --> API: query_embedding
+deactivate Semantic
+
+API -> Verifier: verifica(articole, resurse_web,\nquery_embedding, limba, config)
+activate Verifier
+
+loop Pentru fiecare articol cu rezumat
+    Verifier -> Semantic: codifica(articol.titlu)
+    activate Semantic
+    Semantic --> Verifier: titlu_embedding
+    deactivate Semantic
+    
+    Verifier -> Semantic: codifica(articol.rezumat)
+    activate Semantic
+    Semantic --> Verifier: continut_embedding
+    deactivate Semantic
+    
+    Verifier -> Verifier: similaritate_cosinus(query, titlu)
+    Verifier -> Verifier: similaritate_cosinus(query, continut)
+    
+    alt sim_titlu - sim_continut > 0.3
+        Verifier -> Verifier: Penalizare calitate\nAdaugă flag avertisment
+        note right: "⚠ Verificați calitatea conținutului"
+    end
+end
+
+loop Pentru fiecare resursă web
+    Verifier -> Verifier: Verifică listă domenii blocate
+    alt Domeniu blocat
+        Verifier -> Verifier: Exclude rezultat
+    else Domeniu OK
+        Verifier -> Verifier: Verificare nepotrivire\n(la fel ca articole)
+    end
+end
+
+Verifier --> API: (articole_verificate,\nresurse_web_verificate)
+deactivate Verifier
+
+== Serializare Răspuns ==
+
+API -> API: Construiește răspuns JSON\n{articole[], resurse_web[],\nnotificari[], metadata{}}
+
+API --> Browser: HTTP 200 OK\nRăspuns JSON
+deactivate API
+
+Browser -> Browser: Randează carduri rezultate\nAfișează rating-uri\nArată avertismente calitate
+
+Browser --> Utilizator: Afișează recomandări
+deactivate Browser
+
+note over Utilizator, Feedback
+  Latență totală: ~850ms medie
+  - Semantic: 25ms
+  - Cuvinte cheie: 15ms
+  - Web: 800ms
+  - Academic: 500ms
+  - Clasare: 5ms
+  - Verificare: 20ms
+  (Execuția paralelă reduce timpul total)
+end note
+
+@enduml

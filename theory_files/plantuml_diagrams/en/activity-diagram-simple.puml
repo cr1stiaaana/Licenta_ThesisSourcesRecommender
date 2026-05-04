@@ -1,0 +1,62 @@
+@startuml Article Ingestion (Simplified)
+
+skinparam backgroundColor #FEFEFE
+skinparam defaultFontSize 9
+skinparam activityBackgroundColor #FFFFFF
+
+title Article Ingestion Pipeline
+
+start
+
+:Run ingestion command;
+note right: python app/main.py ingest
+
+:Parse arguments;
+
+if (File exists?) then (yes)
+  :Read file;
+else (no)
+  :Error;
+  stop
+endif
+
+if (Format valid?) then (yes)
+  if (JSON?) then (yes)
+    :Parse JSON;
+  elseif (CSV?) then (yes)
+    :Parse CSV;
+  else (BibTeX)
+    :Parse BibTeX;
+  endif
+else (no)
+  :Error;
+  stop
+endif
+
+:Create Article objects;
+
+:Validate articles\n(title, length);
+
+if (Valid articles > 0?) then (yes)
+  
+  :Store in SQLite\n(articles.db);
+  
+  fork
+    :Build FAISS Index;
+    :Encode with\nSentenceTransformer;
+    :Save faiss.index;
+  fork again
+    :Build BM25 Index;
+    :Tokenize corpus;
+    :Save bm25.pkl;
+  end fork
+  
+  :Success message;
+  
+else (no)
+  :Warning;
+endif
+
+stop
+
+@enduml

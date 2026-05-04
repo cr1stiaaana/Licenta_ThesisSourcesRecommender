@@ -1,0 +1,199 @@
+@startuml Hybrid Thesis Recommender - Arhitectură Backend pe Straturi
+
+skinparam backgroundColor #FEFEFE
+skinparam defaultFontSize 9
+skinparam packageStyle rectangle
+skinparam nodesep 15
+skinparam ranksep 25
+
+title Arhitectură Backend pe Straturi (7 Straturi)
+
+' Stratul 1: Gateway API
+package "Stratul 1: Gateway API" #E3F2FD {
+    [Server WSGI Flask\nPort 5000] as WSGI
+    [Router Blueprint] as Router
+    [Handler CORS] as CORS
+    [Manager Sesiuni] as Session
+    
+    note right of WSGI
+        **Responsabilități:**
+        • Gestionare cereri HTTP
+        • Dispecerizare rute
+        • Gestionare sesiuni
+        • Configurare CORS
+    end note
+}
+
+' Stratul 2: Procesare Cereri
+package "Stratul 2: Procesare Cereri" #F3E5F5 {
+    [Validator Input] as Validator
+    [Parser Cereri] as ReqParser
+    [Autentificare] as Auth
+    [Autorizare] as Authz
+    
+    note right of Validator
+        **Reguli Validare:**
+        • Lungime query: 3-500 caractere
+        • Interval rating: 1-5
+        • Prevenire SQL injection
+        • Sanitizare XSS
+    end note
+}
+
+' Stratul 3: Logică Business
+package "Stratul 3: Logică Business" #FFF3E0 {
+    [Orchestrator Query] as Orchestrator
+    [Detector Limbă\nlangdetect + langid] as LangDet
+    [Manager Config\nwatchdog hot-reload] as Config
+    [Modul I18n\nRO/EN] as I18n
+    
+    note right of Orchestrator
+        **Orchestrare:**
+        • Recuperare paralelă
+        • Gestionare timeout
+        • Agregare erori
+        • Îmbinare rezultate
+    end note
+}
+
+' Stratul 4: Servicii Recuperare
+package "Stratul 4: Servicii Recuperare" #E8F5E9 {
+    [Recuperator Semantic\nFAISS + mpnet-base-v2] as Semantic
+    [Recuperator Cuvinte Cheie\nBM25 Okapi] as Keyword
+    [Recuperator Web\nDuckDuckGo/Google/Bing] as Web
+    [Recuperator Academic\nScholar + arXiv] as Academic
+    
+    note right of Semantic
+        **Strategie Recuperare:**
+        • Execuție paralelă
+        • Selecție Top-K (20)
+        • Normalizare scoruri
+        • Degradare grațioasă
+    end note
+}
+
+' Stratul 5: Servicii Procesare
+package "Stratul 5: Servicii Procesare" #FFF9C4 {
+    [Ranker Hibrid\nRRF + Sumă Ponderată] as Ranker
+    [Verificator Conținut\nDetecție Clickbait] as Verifier
+    [Agregator Feedback\nBoost Rating] as FeedbackAgg
+    [Deduplicator\nDOI + Titlu] as Dedup
+    
+    note right of Ranker
+        **Algoritmi Clasare:**
+        • RRF: scor = Σ w/(60+rang)
+        • Sumă Ponderată: w1*s1 + w2*s2
+        • Boost feedback: +0.1 max
+        • Filtrare scor minim
+    end note
+}
+
+' Stratul 6: Strat Acces Date
+package "Stratul 6: Strat Acces Date" #E1BEE7 {
+    [Stocare Articole\nFAISS + SQLite] as ArticleStore
+    [Stocare Feedback\nSQLite] as FeedbackStore
+    [Stocare Utilizatori\nSQLite] as UserStore
+    [Manager Cache\n(Viitor: Redis)] as Cache
+    
+    note right of ArticleStore
+        **Operații Date:**
+        • Căutare vectorială (FAISS)
+        • Căutare cuvinte cheie (BM25)
+        • Recuperare metadata
+        • Gestionare tranzacții
+    end note
+}
+
+' Stratul 7: Strat Stocare
+package "Stratul 7: Strat Stocare" #FFCCBC {
+    database "Index FAISS\nIndexFlatIP\nVectori 768-dim\n~500MB" as FAISS
+    database "Index BM25\nSerializat Pickle\nIndex inversat\n~50MB" as BM25
+    database "articles.db\nSQLite\nMetadata\n~20MB" as ArticlesDB
+    database "feedback.db\nSQLite\nRating-uri\n~5MB" as FeedbackDB
+    database "users.db\nSQLite\nConturi\n~5MB" as UsersDB
+    
+    note right of FAISS
+        **Detalii Stocare:**
+        • FAISS: Index produs intern
+        • BM25: Corpus tokenizat
+        • SQLite: Conformitate ACID
+        • Stocare bazată pe fișiere
+    end note
+}
+
+' Servicii Externe (Lateral)
+cloud "Servicii Externe" #FFE0B2 {
+    [API DuckDuckGo\nFără cheie] as DDG
+    [Google CSE\nCheie API necesară] as Google
+    [API Bing\nCheie API necesară] as Bing
+    [Semantic Scholar\nAPI gratuit] as Scholar
+    [API arXiv\nXML gratuit] as ArXiv
+}
+
+' Flux Vertical - Cale Cerere
+WSGI --> Router : 1. Rutează cerere
+Router --> Validator : 2. Validează input
+Validator --> Auth : 3. Autentifică
+Auth --> Orchestrator : 4. Procesează query
+
+Orchestrator --> LangDet : 5. Detectează limba
+Orchestrator --> Config : 6. Încarcă config
+
+Orchestrator --> Semantic : 7a. Recuperare paralelă
+Orchestrator --> Keyword : 7b. Recuperare paralelă
+Orchestrator --> Web : 7c. Recuperare paralelă
+Orchestrator --> Academic : 7d. Recuperare paralelă
+
+Semantic --> ArticleStore : 8a. Interogare FAISS
+Keyword --> ArticleStore : 8b. Interogare BM25
+Web --> DDG : 8c. API extern
+Academic --> Scholar : 8d. API extern
+Academic --> ArXiv : 8e. API extern
+
+Semantic --> Ranker : 9a. Rezultate
+Keyword --> Ranker : 9b. Rezultate
+Web --> Ranker : 9c. Rezultate
+Academic --> Ranker : 9d. Rezultate
+
+Ranker --> Dedup : 10. Deduplicare
+Dedup --> FeedbackAgg : 11. Aplică feedback
+FeedbackAgg --> FeedbackStore : 12. Interogare rating-uri
+FeedbackStore --> FeedbackDB : 13. Citește rating-uri
+
+FeedbackAgg --> Verifier : 14. Verifică calitate
+Verifier --> Orchestrator : 15. Rezultate verificate
+
+Orchestrator --> WSGI : 16. Serializează răspuns
+
+' Conexiuni Acces Date
+ArticleStore --> FAISS : Căutare vectorială
+ArticleStore --> BM25 : Căutare cuvinte cheie
+ArticleStore --> ArticlesDB : Metadata
+UserStore --> UsersDB : Date utilizatori
+
+' Note Cross-Layer
+note bottom of WSGI
+    **Flux Cerere (Sus în Jos):**
+    1. Cerere HTTP → Gateway API
+    2. Validare & Auth → Procesare Cereri
+    3. Orchestrare → Logică Business
+    4. Recuperare Paralelă → Servicii Recuperare
+    5. Clasare & Verificare → Servicii Procesare
+    6. Interogări Date → Strat Acces Date
+    7. Operații Stocare → Strat Stocare
+    
+    **Flux Răspuns (Jos în Sus):**
+    Rezultatele urcă prin straturi
+    cu transformări la fiecare nivel
+end note
+
+note bottom of FAISS
+    **Caracteristici Straturi:**
+    • Fiecare strat are responsabilitate unică
+    • Cuplaj slab între straturi
+    • Interfețe și contracte clare
+    • Testabil izolat
+    • Scalabil orizontal
+end note
+
+@enduml

@@ -3,13 +3,19 @@ __pycache__/
 *.py[cod]
 *$py.class
 *.so
+.pytest_cache/
 
 # Virtual environment
 venv/
 env/
 ENV/
 
-# Data files
+# Node modules and compiled TypeScript
+node_modules/
+static/dist/
+package-lock.json
+
+# Data files (runtime generated)
 data/
 *.db
 *.pkl
@@ -21,12 +27,15 @@ data/
 *.swp
 *.swo
 
-# Test files (temporary)
-test_*.py
-debug_*.py
-add_test_articles.py
-add_spec_articles.py
-build_indexes.py
+# Test files (temporary - root level only)
+/test_*.py
+/debug_*.py
+/add_test_articles.py
+/add_spec_articles.py
+/add_realistic_articles.py
+/build_indexes.py
+/rebuild_indexes.py
+/populate_article_store.py
 
 # OS
 .DS_Store
@@ -34,3 +43,19 @@ Thumbs.db
 
 # Logs
 *.log
+
+# Environment files
+database_config.env.example
+.env
+.env.local
+
+# Backup files
+*.backup
+*.bak
+static/app.js.backup
+
+# PlantUML generated files
+theory_files/plantuml_diagrams/**/*.png
+theory_files/plantuml_diagrams/**/*.svg
+theory_files/plantuml_diagrams/**/*.pdf
+

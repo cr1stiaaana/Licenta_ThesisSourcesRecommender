@@ -1,0 +1,146 @@
+@startuml Hybrid Thesis Recommender - Arhitectură Generală
+
+skinparam backgroundColor #FEFEFE
+skinparam defaultFontSize 10
+skinparam packageStyle rectangle
+skinparam nodesep 15
+skinparam ranksep 25
+
+title Hybrid Thesis Recommender - Arhitectura Sistemului
+
+' Strat Client
+package "Strat Client" #E1F5FF {
+    [Browser Web] as Browser
+    [Aplicație TypeScript] as TS
+    note right of TS
+        • UI tip React
+        • Mod întunecat
+        • Bilingv (RO/EN)
+        • Fallback LocalStorage
+    end note
+}
+
+' Strat Aplicație
+package "Strat Aplicație" #FFF4E1 {
+    [API REST Flask] as Flask
+    [Detector Limbă] as LangDet
+    [Manager Configurare] as Config
+    [Modul I18n] as I18n
+    
+    note right of Flask
+        • Arhitectură Blueprint
+        • Config hot-reload
+        • Degradare grațioasă
+    end note
+}
+
+' Strat Recuperare
+package "Strat Recuperare" #E8F5E9 {
+    [Recuperator Semantic\n(FAISS)] as Semantic
+    [Recuperator Cuvinte Cheie\n(BM25)] as Keyword
+    [Recuperator Web\n(DuckDuckGo)] as Web
+    [Recuperator Academic\n(Scholar/arXiv)] as Academic
+    
+    note right of Semantic
+        • Embeddings 768-dim
+        • mpnet-base-v2
+        • Similaritate cosinus
+    end note
+}
+
+' Strat Procesare
+package "Strat Procesare" #FFF3E0 {
+    [Ranker Hibrid\n(RRF)] as Ranker
+    [Verificator Conținut\n(Clickbait)] as Verifier
+    [Sistem Feedback] as Feedback
+    
+    note right of Ranker
+        • Fuziune RRF
+        • Sumă ponderată
+        • Boost feedback
+    end note
+}
+
+' Strat Stocare
+package "Strat Stocare" #F3E5F5 {
+    database "Index FAISS\nVectori 768-dim\n~500MB" as FAISS
+    database "Index BM25\nIndex inversat\n~50MB" as BM25
+    database "Baze SQLite\narticole + feedback\n~30MB" as SQLite
+    
+    note right of FAISS
+        • IndexFlatIP
+        • Vectori normalizați
+        • Căutare rapidă
+    end note
+}
+
+' Servicii Externe
+cloud "Servicii Externe" #FFE0B2 {
+    [API DuckDuckGo] as DDG
+    [Google CSE] as Google
+    [API Bing] as Bing
+    [Semantic Scholar] as Scholar
+    [API arXiv] as ArXiv
+}
+
+' Conexiuni - Client la Aplicație
+Browser --> TS : randează
+TS --> Flask : HTTP/REST\nport 5000
+
+' Conexiuni - Strat Aplicație
+Flask --> LangDet : detectează limba
+Flask --> Config : citește config
+Flask --> I18n : traduce
+
+' Conexiuni - Recuperare
+Flask --> Semantic : interogare
+Flask --> Keyword : interogare
+Flask --> Web : interogare
+Flask --> Academic : interogare
+
+' Conexiuni - Stocare
+Semantic --> FAISS : căutare vectorială
+Keyword --> BM25 : căutare cuvinte cheie
+Semantic --> SQLite : metadata
+Keyword --> SQLite : metadata
+
+' Conexiuni - Externe
+Web --> DDG : căutare
+Web --> Google : căutare
+Web --> Bing : căutare
+Academic --> Scholar : căutare
+Academic --> ArXiv : căutare
+
+' Conexiuni - Procesare
+Semantic --> Ranker : rezultate
+Keyword --> Ranker : rezultate
+Web --> Ranker : rezultate
+Academic --> Ranker : rezultate
+
+Ranker --> Verifier : rezultate clasate
+Ranker --> Feedback : interogare rating-uri
+Feedback --> SQLite : stocare/recuperare
+
+Verifier --> Flask : rezultate verificate
+Flask --> TS : răspuns JSON
+
+' Caracteristici Cheie
+note bottom of Browser
+    **Caracteristici Cheie:**
+    • Căutare hibridă (semantic + cuvinte cheie)
+    • Căutare live web & academică
+    • Verificare calitate
+    • Sistem feedback utilizatori
+    • Suport bilingv (RO/EN)
+end note
+
+' Metrici Performanță
+note bottom of Ranker
+    **Performanță:**
+    • Timp răspuns: <1s (medie 850ms)
+    • Recuperare paralelă
+    • Ponderi configurabile
+    • Config hot-reload
+end note
+
+@enduml

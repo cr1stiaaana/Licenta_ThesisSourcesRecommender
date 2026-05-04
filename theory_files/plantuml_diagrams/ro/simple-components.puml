@@ -1,0 +1,50 @@
+@startuml Componente Sistem - Hybrid Thesis Recommender
+
+skinparam backgroundColor #FFFFFF
+skinparam defaultFontSize 13
+skinparam componentFontSize 13
+skinparam packageFontSize 14
+skinparam shadowing false
+
+title Componentele principale ale sistemului
+
+package "Frontend" #E8F5E9 {
+  [Interfață Web] as UI
+  [Client API] as API_Client
+}
+
+package "Backend" #BBDEFB {
+  [API REST Flask] as REST_API
+  [Detector Limbă] as LangDet
+  [Recuperator Semantic] as Semantic
+  [Recuperator BM25] as BM25
+  [Recuperator Web] as Web
+  [Ranker Hibrid] as Ranker
+}
+
+package "Stocare" #FFE0B2 {
+  database "Index FAISS" as FAISS
+  database "Index BM25" as BM25_DB
+  database "SQLite" as SQLite
+}
+
+UI --> API_Client
+API_Client --> REST_API : HTTP/JSON
+
+REST_API --> LangDet
+REST_API --> Semantic
+REST_API --> BM25
+REST_API --> Web
+
+Semantic --> FAISS
+BM25 --> BM25_DB
+Semantic --> SQLite
+BM25 --> SQLite
+
+Semantic --> Ranker
+BM25 --> Ranker
+Web --> Ranker
+
+Ranker --> REST_API
+
+@enduml

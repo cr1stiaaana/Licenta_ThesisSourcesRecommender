@@ -1,0 +1,79 @@
+@startuml Hybrid Thesis Recommender - Flux Recomandare (Simplificat)
+
+skinparam backgroundColor #FEFEFE
+skinparam defaultFontSize 9
+skinparam sequenceMessageAlign center
+
+actor Utilizator
+participant "Browser" as B
+participant "API" as API
+participant "Semantic" as Sem
+participant "Cuvinte\nCheie" as Kw
+participant "Web" as Web
+participant "Ranker" as Rank
+participant "Verificator" as Ver
+
+Utilizator -> B: Introduce query
+activate B
+
+B -> API: POST /recommend
+activate API
+
+API -> API: Validare\nDetectare limbă
+
+== Recuperare Paralelă ==
+
+par
+    API -> Sem: recupereaza(query, 20)
+    activate Sem
+    Sem -> Sem: Codifică query\nCaută FAISS
+    Sem --> API: Rezultate
+    deactivate Sem
+else
+    API -> Kw: recupereaza(query, 20)
+    activate Kw
+    Kw -> Kw: Tokenizare\nScor BM25
+    Kw --> API: Rezultate
+    deactivate Kw
+else
+    API -> Web: recupereaza(query)
+    activate Web
+    Web -> Web: Apel API\nDuckDuckGo
+    Web --> API: Rezultate
+    deactivate Web
+end
+
+== Fuziune & Clasare ==
+
+API -> Rank: fuzionare_articole(...)
+activate Rank
+Rank -> Rank: Scor RRF\nBoost feedback\nFiltrare & sortare
+Rank --> API: Listă clasată
+deactivate Rank
+
+== Verificare ==
+
+API -> Ver: verifica(...)
+activate Ver
+Ver -> Ver: Verifică calitate\nDetectează clickbait\nFiltrează domenii
+Ver --> API: Rezultate verificate
+deactivate Ver
+
+API --> B: Răspuns JSON
+deactivate API
+
+B -> B: Randează rezultate
+B --> Utilizator: Afișare
+deactivate B
+
+note over Sem, Kw
+  Execuție paralelă
+  reduce latența
+end note
+
+note over Rank
+  Formulă RRF:
+  scor = Σ w/(60+rang)
+end note
+
+@enduml

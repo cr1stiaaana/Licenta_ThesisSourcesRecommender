@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API Documentation</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        h1 {
+            color: #333;
+            border-bottom: 3px solid #c7410e;
+            padding-bottom: 10px;
+        }
+        .doc-links {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-top: 30px;
+        }
+        .doc-card {
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 20px;
+            text-decoration: none;
+            color: inherit;
+            transition: all 0.3s;
+        }
+        .doc-card:hover {
+            border-color: #c7410e;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            transform: translateY(-2px);
+        }
+        .doc-card h2 {
+            margin-top: 0;
+            color: #c7410e;
+        }
+        .doc-card p {
+            color: #666;
+            margin-bottom: 0;
+        }
+        .footer {
+            margin-top: 50px;
+            text-align: center;
+            color: #999;
+            font-size: 0.9em;
+        }
+    </style>
+</head>
+<body>
+    <h1>🚀 Hybrid Thesis Recommender - API Documentation</h1>
+    <p>Choose your preferred documentation format:</p>
+    
+    <div class="doc-links">
+        <a href="swagger-ui.html" class="doc-card">
+            <h2>📘 Swagger UI</h2>
+            <p>Interactive API documentation with "Try it out" functionality</p>
+        </a>
+        
+        <a href="redoc.html" class="doc-card">
+            <h2>📗 Redoc</h2>
+            <p>Clean, responsive API documentation</p>
+        </a>
+        
+        <a href="api-docs.md" class="doc-card">
+            <h2>📝 Markdown</h2>
+            <p>Lightweight documentation in Markdown format</p>
+        </a>
+        
+        <a href="../openapi.yaml" class="doc-card">
+            <h2>⚙️ OpenAPI Spec</h2>
+            <p>Raw OpenAPI 3.0 specification (YAML)</p>
+        </a>
+    </div>
+    
+    <div class="footer">
+        <p>Generated automatically from OpenAPI specification</p>
+    </div>
+</body>
+</html>

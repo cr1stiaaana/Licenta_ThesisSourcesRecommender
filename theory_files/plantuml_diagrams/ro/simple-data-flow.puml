@@ -1,0 +1,26 @@
+@startuml Flux de Date - Hybrid Thesis Recommender
+
+skinparam backgroundColor #FFFFFF
+skinparam defaultFontSize 14
+skinparam rectangleFontSize 14
+skinparam arrowFontSize 11
+skinparam shadowing false
+
+title Fluxul de date în sistem
+
+rectangle "Utilizator\nIntroduce query" as User #FFF9C4
+rectangle "Frontend\nValidare & trimitere" as Frontend #E8F5E9
+rectangle "Backend\nProcesare query" as Backend #BBDEFB
+rectangle "Recuperare\nSemantic + BM25\n+ Web + Academic" as Retrieval #FFE0B2
+rectangle "Clasare\nHybrid Ranker (RRF)" as Ranking #E1BEE7
+rectangle "Rezultate\nArticole recomandate" as Results #C8E6C9
+
+User -down-> Frontend : "1. Query"
+Frontend -down-> Backend : "2. HTTP POST"
+Backend -down-> Retrieval : "3. Căutare paralelă"
+Retrieval -down-> Ranking : "4. Rezultate brute"
+Ranking -down-> Backend : "5. Rezultate clasate"
+Backend -down-> Frontend : "6. JSON răspuns"
+Frontend -down-> User : "7. Afișare rezultate"
+
+@enduml

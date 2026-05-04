@@ -1,0 +1,178 @@
+@startuml Hybrid Thesis Recommender - Recommendation Flow Sequence
+
+skinparam backgroundColor #FEFEFE
+skinparam sequenceMessageAlign center
+skinparam responseMessageBelowArrow true
+
+actor User
+participant "Browser\n(TypeScript)" as Browser
+participant "Flask API\n(api.py)" as API
+participant "Language\nDetector" as LangDetect
+participant "Semantic\nRetriever" as Semantic
+participant "Keyword\nRetriever" as Keyword
+participant "Web\nRetriever" as Web
+participant "Academic\nRetriever" as Academic
+participant "Hybrid\nRanker" as Ranker
+participant "Content\nVerifier" as Verifier
+participant "FAISS\nIndex" as FAISS
+participant "BM25\nIndex" as BM25
+participant "Feedback\nStore" as Feedback
+
+User -> Browser: Enter thesis title\n"Neural networks for NLP"
+activate Browser
+
+Browser -> API: POST /recommend\n{title, abstract, keywords}
+activate API
+
+API -> API: Validate input\n(3-500 chars)
+
+API -> LangDetect: detect(query_text)
+activate LangDetect
+LangDetect --> API: "en"
+deactivate LangDetect
+
+API -> API: Create Query object
+
+== Parallel Retrieval Phase ==
+
+par Semantic Search
+    API -> Semantic: retrieve(query, top_k=20)
+    activate Semantic
+    Semantic -> Semantic: encode(query.combined_text())
+    note right: 768-dim vector\nL2 normalized
+    Semantic -> FAISS: search_vector(embedding, k=20)
+    activate FAISS
+    FAISS --> Semantic: top-20 articles + scores
+    deactivate FAISS
+    Semantic --> API: RetrievalResult(semantic)
+    deactivate Semantic
+else Keyword Search
+    API -> Keyword: retrieve(query, top_k=20)
+    activate Keyword
+    Keyword -> Keyword: tokenize(query.combined_text())
+    Keyword -> BM25: get_scores(tokens)
+    activate BM25
+    BM25 --> Keyword: BM25 scores
+    deactivate BM25
+    Keyword -> Keyword: normalize scores\n(max_score = 1.0)
+    Keyword --> API: RetrievalResult(keyword)
+    deactivate Keyword
+else Web Search
+    API -> Web: retrieve(query, language="en")
+    activate Web
+    Web -> Web: DuckDuckGo API call
+    note right: Timeout: 10s\nMax results: 50
+    Web --> API: WebRetrievalResult
+    deactivate Web
+else Academic Search
+    API -> Academic: retrieve(query, top_k=20)
+    activate Academic
+    par Semantic Scholar
+        Academic -> Academic: search_semantic_scholar()
+        note right: API: semanticscholar.org\nFields: title, abstract,\nauthors, year, DOI
+    else arXiv
+        Academic -> Academic: search_arxiv()
+        note right: API: export.arxiv.org\nFormat: XML\nSort: relevance
+    end
+    Academic --> API: RetrievalResult(academic)
+    deactivate Academic
+end
+
+== Fusion & Ranking Phase ==
+
+API -> Ranker: fuse_articles(semantic, keyword,\ntop_k=10, sem_w=0.6, kw_w=0.4)
+activate Ranker
+
+Ranker -> Ranker: Build rank maps\n(dedup by DOI/title)
+
+alt Fusion Strategy = RRF
+    Ranker -> Ranker: RRF scoring\nscore = Σ weight/(60 + rank)
+else Fusion Strategy = Weighted Sum
+    Ranker -> Ranker: Weighted sum\nscore = w1*s1 + w2*s2
+end
+
+alt Feedback Signal Enabled
+    Ranker -> Feedback: get_ratings(item_ids)
+    activate Feedback
+    Feedback --> Ranker: average ratings
+    deactivate Feedback
+    Ranker -> Ranker: Apply feedback boost\nscore += boost * (rating-1)/4
+end
+
+Ranker -> Ranker: Filter by min_article_score\nSort descending\nTake top-10
+
+Ranker --> API: list[ArticleRecommendation]
+deactivate Ranker
+
+API -> Ranker: rank_web_resources(web, top_k=10)
+activate Ranker
+Ranker -> Ranker: Filter by min_web_score\nSort by web_score desc
+Ranker --> API: list[WebResourceRecommendation]
+deactivate Ranker
+
+== Verification Phase ==
+
+API -> Semantic: encode(query.combined_text())
+activate Semantic
+Semantic --> API: query_embedding
+deactivate Semantic
+
+API -> Verifier: verify(articles, web_resources,\nquery_embedding, language, config)
+activate Verifier
+
+loop For each article with abstract
+    Verifier -> Semantic: encode(article.title)
+    activate Semantic
+    Semantic --> Verifier: title_embedding
+    deactivate Semantic
+    
+    Verifier -> Semantic: encode(article.abstract)
+    activate Semantic
+    Semantic --> Verifier: content_embedding
+    deactivate Semantic
+    
+    Verifier -> Verifier: cosine_similarity(query, title)
+    Verifier -> Verifier: cosine_similarity(query, content)
+    
+    alt title_sim - content_sim > 0.3
+        Verifier -> Verifier: Quality penalty\nAdd warning flag
+        note right: "⚠ Verify content quality"
+    end
+end
+
+loop For each web resource
+    Verifier -> Verifier: Check domain blocklist
+    alt Domain blocked
+        Verifier -> Verifier: Exclude result
+    else Domain OK
+        Verifier -> Verifier: Mismatch check\n(same as articles)
+    end
+end
+
+Verifier --> API: (verified_articles,\nverified_web_resources)
+deactivate Verifier
+
+== Response Serialization ==
+
+API -> API: Build JSON response\n{articles[], web_resources[],\nnotices[], metadata{}}
+
+API --> Browser: HTTP 200 OK\nJSON response
+deactivate API
+
+Browser -> Browser: Render result cards\nDisplay ratings\nShow quality warnings
+
+Browser --> User: Display recommendations
+deactivate Browser
+
+note over User, Feedback
+  Total latency: ~850ms average
+  - Semantic: 25ms
+  - Keyword: 15ms
+  - Web: 800ms
+  - Academic: 500ms
+  - Ranking: 5ms
+  - Verification: 20ms
+  (Parallel execution reduces total time)
+end note
+
+@enduml
