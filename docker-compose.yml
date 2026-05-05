@@ -11,6 +11,8 @@ services:
       - ./data:/app/data
       # Mount config for hot-reload
       - ./config.yaml:/app/config.yaml:ro
+      # Cache for embedding model (persistent)
+      - model-cache:/root/.cache
     environment:
       - FLASK_ENV=production
       - PYTHONUNBUFFERED=1
@@ -27,3 +29,7 @@ services:
 networks:
   thesis-network:
     driver: bridge
+
+volumes:
+  model-cache:
+    driver: local

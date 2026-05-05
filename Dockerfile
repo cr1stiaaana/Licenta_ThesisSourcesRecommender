@@ -13,9 +13,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY requirements.txt .
 RUN pip install --no-cache-dir --user -r requirements.txt
 
-# Download the embedding model during build (cached layer)
-RUN python -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('paraphrase-multilingual-mpnet-base-v2')"
-
 # Final stage
 FROM python:3.10-slim
 
@@ -29,7 +26,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 # Copy Python packages from builder
 COPY --from=builder /root/.local /root/.local
-COPY --from=builder /root/.cache /root/.cache
 
 # Make sure scripts in .local are usable
 ENV PATH=/root/.local/bin:$PATH
@@ -49,9 +45,11 @@ EXPOSE 5000
 # Set environment variables
 ENV FLASK_APP=app.main
 ENV PYTHONUNBUFFERED=1
+# Skip model download during build - will download on first run
+ENV TRANSFORMERS_OFFLINE=0
 
 # Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
     CMD python -c "import requests; requests.get('http://localhost:5000/', timeout=5)"
 
 # Run the application
