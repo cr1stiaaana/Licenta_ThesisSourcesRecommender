@@ -1,0 +1,77 @@
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.pytest_cache/
+
+# Virtual environment
+venv/
+env/
+ENV/
+
+# Node modules
+node_modules/
+static/dist/
+package-lock.json
+
+# Data files (will be mounted as volume)
+data/
+*.db
+*.pkl
+*.index
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Git
+.git/
+.gitignore
+.gitattributes
+
+# Test files
+test_*.py
+debug_*.py
+add_test_articles.py
+add_spec_articles.py
+add_realistic_articles.py
+build_indexes.py
+rebuild_indexes.py
+populate_article_store.py
+tests/
+
+# Documentation
+theory_files/
+docs/
+*.md
+!README.md
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Environment files
+.env
+.env.local
+database_config.env.example
+
+# Backup files
+*.backup
+*.bak
+static/app.js.backup
+
+# Kiro files
+.kiro/
+
+# TypeScript source (only compiled JS needed)
+static/src/
+tsconfig.json
+
+# Diagrams
+theory_files/plantuml_diagrams/

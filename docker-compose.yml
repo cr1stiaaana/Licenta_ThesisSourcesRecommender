@@ -1,0 +1,29 @@
+services:
+  thesis-recommender:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: hybrid-thesis-recommender
+    ports:
+      - "5000:5000"
+    volumes:
+      # Mount data directory for persistence
+      - ./data:/app/data
+      # Mount config for hot-reload
+      - ./config.yaml:/app/config.yaml:ro
+    environment:
+      - FLASK_ENV=production
+      - PYTHONUNBUFFERED=1
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import requests; requests.get('http://localhost:5000/', timeout=5)"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - thesis-network
+
+networks:
+  thesis-network:
+    driver: bridge
