@@ -23,7 +23,7 @@ This document tracks the implementation of spec-driven development practices for
 **Status**: Complete
 **Files**:
 - `app/api.py` - Flask REST API implementation
-- `static/` - Frontend (HTML/CSS/JS)
+- `static/` - Frontend (HTML/CSS/TypeScript)
 
 **Details**:
 - All endpoints implemented according to spec

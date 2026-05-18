@@ -33,7 +33,7 @@ Added optional user authentication that allows users to save their data persiste
 
 ### Frontend (New)
 
-#### JavaScript (`static/app.js`)
+#### JavaScript (`static/app.js`) → TypeScript (`static/src/app.ts`)
 - `checkAuthStatus()` - Check if user is logged in on page load
 - `updateAuthUI()` - Show/hide login button vs user info
 - `getSavedItems()` - Fetch from server if logged in, localStorage if guest

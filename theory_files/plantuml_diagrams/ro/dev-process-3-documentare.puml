@@ -1,0 +1,28 @@
+@startuml Faza 3 - Documentare
+
+skinparam backgroundColor #FEFEFE
+skinparam defaultFontSize 10
+
+title Faza 3: Documentare și Livrare
+
+|#E8F5E9| Dezvoltator |
+|#E3F2FD| Kiro IDE |
+
+|Dezvoltator|
+start
+:Solicitare documentație;
+
+|Kiro IDE|
+:Generare openapi.yaml\n(specificație API);
+
+:Generare docs/\n(Swagger UI + ReDoc);
+
+:Generare diagrame PlantUML\n(arhitectură, secvență, componente);
+
+:Generare README.md;
+
+|Dezvoltator|
+:Testare manuală + livrare;
+stop
+
+@enduml

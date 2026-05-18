@@ -1,0 +1,34 @@
+@startuml
+skinparam backgroundColor #FEFEFE
+skinparam defaultFontSize 12
+skinparam ArrowColor #555555
+skinparam rectangleBorderColor #999999
+
+left to right direction
+
+title Arhitectura Sistemului Hibrid de Recomandare a Resurselor Academice
+
+rectangle "Interfata Web\n(HTML/CSS/TypeScript)" as UI #E1F5FE
+rectangle "Backend Flask\n(Validare, Limba, Config)" as API #FFF8E1
+rectangle "Semantic\n(FAISS)" as Sem #E8F5E9
+rectangle "Cuvinte Cheie\n(BM25)" as KW #E8F5E9
+rectangle "Academic\n(Scholar + arXiv)" as Ac #E8F5E9
+rectangle "Web\n(DuckDuckGo)" as Web #E8F5E9
+rectangle "Ranker Hibrid\n(RRF + Verificare)" as Rank #FFF3E0
+database "Stocare\n(FAISS + BM25 + SQLite)" as DB #F3E5F5
+
+UI -right-> API : 1
+API -right-> Sem : 2
+API -right-> KW : 3
+API -right-> Ac : 4
+API -right-> Web : 5
+Sem -right-> Rank : 6
+KW -right-> Rank : 7
+Ac -right-> Rank : 8
+Web -right-> Rank : 9
+Rank -right-> DB : 10
+DB -left-> Rank : 11
+Rank -left-> API : 12
+API -left-> UI : 13
+
+@enduml

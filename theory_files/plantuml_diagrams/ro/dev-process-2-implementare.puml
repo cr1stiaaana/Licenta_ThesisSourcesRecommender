@@ -1,0 +1,26 @@
+@startuml Faza 2 - Implementare
+
+skinparam backgroundColor #FEFEFE
+skinparam defaultFontSize 10
+
+title Faza 2: Implementare din Specificații
+
+|#E8F5E9| Dezvoltator |
+|#E3F2FD| Kiro IDE |
+
+|Dezvoltator|
+start
+:Comandă: "Execute all tasks";
+
+|Kiro IDE|
+:Citire tasks.md;
+
+:Generare cod secvențial:\n1. Modele de date\n2. Strat stocare (FAISS + SQLite)\n3. Recuperatoare (semantic, BM25, web)\n4. Ranker hibrid (RRF)\n5. Verificator conținut\n6. API REST Flask\n7. Frontend (HTML/CSS/TypeScript)\n8. Teste;
+
+:Validare automată\n(build + teste după fiecare task);
+
+|Dezvoltator|
+:Verificare rezultat;
+stop
+
+@enduml

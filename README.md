@@ -46,7 +46,8 @@ python add_realistic_articles.py
 
 5. Start the server:
 ```bash
-python app/main.py
+python -m app.main
+
 ```
 
 6. Open http://localhost:5000 in your browser

@@ -13,7 +13,7 @@ Hybrid Thesis Recommender este un sistem de recomandare academic care combină c
 ```mermaid
 graph TB
     subgraph "Client Layer"
-        Browser[Browser Web<br/>HTML/CSS/JavaScript]
+        Browser[Browser Web<br/>HTML/CSS/TypeScript]
     end
 
     subgraph "Application Layer"
@@ -99,7 +99,7 @@ graph TB
 ```mermaid
 graph TD
     subgraph "Layer 1: Presentation"
-        UI[Web UI<br/>Static HTML/CSS/JS]
+        UI[Web UI<br/>Static HTML/CSS/TypeScript]
         UI_Features[• Form submission<br/>• Result rendering<br/>• Language toggle<br/>• Star ratings<br/>• Dark mode]
     end
 
@@ -429,7 +429,7 @@ graph TB
     subgraph "Application Tier"
         subgraph "Flask Server"
             App[Flask Application<br/>Port 5000]
-            Static[Static File Server<br/>HTML/CSS/JS]
+            Static[Static File Server<br/>HTML/CSS/TypeScript]
         end
         
         subgraph "ML Models"
@@ -744,7 +744,7 @@ graph TB
 
 | Layer | Tehnologii |
 |-------|------------|
-| **Frontend** | HTML5, CSS3, Vanilla JavaScript |
+| **Frontend** | HTML5, CSS3, TypeScript |
 | **Backend** | Flask 3.1.1, Python 3.10+ |
 | **ML/AI** | sentence-transformers, FAISS, BM25 |
 | **Storage** | SQLite, FAISS index, Pickle |

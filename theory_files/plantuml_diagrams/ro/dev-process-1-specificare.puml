@@ -1,0 +1,36 @@
+@startuml Faza 1 - Specificare
+
+skinparam backgroundColor #FEFEFE
+skinparam defaultFontSize 10
+
+title Faza 1: Specificare cu Kiro IDE
+
+|#E8F5E9| Dezvoltator |
+|#E3F2FD| Kiro IDE |
+
+|Dezvoltator|
+start
+:Descriere idee inițială în chat;
+
+|Kiro IDE|
+:Alegere: Build a Feature\nFlux: Requirements First;
+
+:Generare **requirements.md**;
+
+|Dezvoltator|
+:Revizuire & feedback;
+
+|Kiro IDE|
+:Generare **design.md**;
+
+|Dezvoltator|
+:Revizuire & feedback;
+
+|Kiro IDE|
+:Generare **tasks.md**;
+
+|Dezvoltator|
+:Confirmare plan;
+stop
+
+@enduml

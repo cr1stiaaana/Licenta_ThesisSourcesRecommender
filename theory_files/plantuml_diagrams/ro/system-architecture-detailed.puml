@@ -1,0 +1,106 @@
+@startuml Arhitectura Sistemului de Recomandare Hibrid
+
+skinparam backgroundColor #FEFEFE
+skinparam defaultFontSize 10
+skinparam packageStyle rectangle
+skinparam nodesep 15
+skinparam ranksep 25
+
+title Arhitectura Sistemului Hibrid de Recomandare\na Resurselor Academice Bazat pe Context Semantic
+
+' ============================================
+' STRAT 1: INTERFATA UTILIZATOR
+' ============================================
+package "Strat Prezentare (Frontend)" #E1F5FE {
+    [Browser Web] as Browser
+    [Interfata HTML/CSS/TypeScript] as UI
+}
+
+' ============================================
+' STRAT 2: API REST
+' ============================================
+package "Strat Aplicatie (Backend Flask)" #FFF8E1 {
+    [Flask REST API - port 5000] as API
+    [Detector Limba] as LangDet
+    [Manager Configurare] as ConfigMgr
+    [Modul I18n] as I18n
+    [Validator Input] as Validator
+}
+
+' ============================================
+' STRAT 3: RECUPERARE
+' ============================================
+package "Strat Recuperare (Retrieval)" #E8F5E9 {
+    [Recuperator Semantic\nFAISS + sentence-transformers] as SemRet
+    [Recuperator Cuvinte Cheie\nBM25] as KwRet
+    [Recuperator Web\nDuckDuckGo] as WebRet
+    [Recuperator Academic\nSemantic Scholar + arXiv] as AcadRet
+}
+
+' ============================================
+' STRAT 4: PROCESARE
+' ============================================
+package "Strat Procesare (Ranking)" #FFF3E0 {
+    [Ranker Hibrid\nReciprocal Rank Fusion] as Ranker
+    [Verificator Continut\nDetectie Clickbait] as Verifier
+    [Sistem Feedback\nSignal Boosting] as FeedbackSys
+}
+
+' ============================================
+' STRAT 5: STOCARE
+' ============================================
+package "Strat Stocare (Data)" #F3E5F5 {
+    database "FAISS Index\nVectori 768-dim" as FAISS_DB
+    database "BM25 Index" as BM25_DB
+    database "SQLite\narticles + feedback + users" as SQLiteDB
+}
+
+' ============================================
+' STRAT 6: SERVICII EXTERNE
+' ============================================
+cloud "Servicii Externe" #FFEBEE {
+    [DuckDuckGo API] as DDG
+    [Semantic Scholar API] as ScholarAPI
+    [arXiv API] as ArXivAPI
+}
+
+' ============================================
+' CONEXIUNI
+' ============================================
+
+Browser --> UI
+UI --> API : HTTP/REST
+
+API --> Validator
+API --> LangDet
+API --> I18n
+API --> ConfigMgr
+
+API --> SemRet
+API --> KwRet
+API --> WebRet
+API --> AcadRet
+
+SemRet --> FAISS_DB
+SemRet --> SQLiteDB
+KwRet --> BM25_DB
+KwRet --> SQLiteDB
+
+WebRet --> DDG
+AcadRet --> ScholarAPI
+AcadRet --> ArXivAPI
+
+SemRet --> Ranker
+KwRet --> Ranker
+WebRet --> Ranker
+AcadRet --> Ranker
+
+Ranker --> Verifier
+Ranker --> FeedbackSys
+FeedbackSys --> SQLiteDB
+
+Verifier --> API
+API --> SQLiteDB
+API --> UI : JSON Response
+
+@enduml

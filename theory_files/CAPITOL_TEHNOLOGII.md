@@ -17,12 +17,13 @@ Python a fost ales ca limbaj principal pentru backend datorită:
 
 **Versiune utilizată**: Python 3.10.x
 
-#### JavaScript (ES6+)
-JavaScript vanilla (fără framework) pentru frontend:
+#### TypeScript (ES2020)
+TypeScript (fără framework) pentru frontend:
+- **Type Safety**: Verificare statică a tipurilor la compilare
 - **Performanță**: Fără overhead-ul unui framework
-- **Simplitate**: Cod ușor de înțeles și menținut
-- **Compatibilitate**: Suport nativ în toate browserele moderne
-- **Control complet**: Flexibilitate maximă în implementare
+- **Mentenabilitate**: Interfețe și tipuri explicite pentru toate structurile de date
+- **Compatibilitate**: Compilat în JavaScript ES2020, suport nativ în toate browserele moderne
+- **Control complet**: Flexibilitate maximă în implementare cu strict mode activat
 
 ### 3.2.2 Framework-uri și Biblioteci Backend
 
@@ -148,12 +149,13 @@ Markup și styling modern:
 - **Flexbox/Grid**: Layout responsive
 - **Accessibility**: ARIA labels, keyboard navigation
 
-#### Vanilla JavaScript (ES6+)
-Logică client-side fără framework:
-- **Fetch API**: Comunicare asincronă cu backend
+#### TypeScript (Strict Mode)
+Logică client-side fără framework, cu tipare stricte:
+- **Fetch API**: Comunicare asincronă cu backend, tipuri pentru request/response
 - **LocalStorage**: Persistență date pentru utilizatori guest
 - **Session Storage**: State management pentru paginație
 - **Event Delegation**: Gestionare eficientă evenimente
+- **Interfețe tipizate**: Toate structurile de date definite în `types.ts`
 
 **Caracteristici implementate**:
 - Paginație independentă per tab (articole vs resurse web)
@@ -173,7 +175,7 @@ Editor principal de cod:
   - Pylance: Type checking și auto-completion avansat
   - OpenAPI (Swagger) Editor: Editare și validare specificații API
   - GitLens: Vizualizare istoricul Git inline
-  - Prettier: Formatare automată cod JavaScript/HTML/CSS
+  - Prettier: Formatare automată cod TypeScript/HTML/CSS
 
 #### Kiro (AI-Powered Development Environment)
 Mediu de dezvoltare asistat de AI:
@@ -357,7 +359,7 @@ jobs:
   
   lint:
     - Pylint pentru Python
-    - ESLint pentru JavaScript
+    - ESLint pentru TypeScript
     - Type checking cu mypy
   
   docs:
