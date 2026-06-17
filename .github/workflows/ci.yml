@@ -12,6 +12,60 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  validate-openapi:
+    name: Validate OpenAPI Spec
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python 3.10
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.10'
+        cache: 'pip'
+
+    - name: Install OpenAPI validator
+      run: |
+        python -m pip install --upgrade pip
+        pip install openapi-spec-validator==0.7.1
+
+    - name: Validate OpenAPI specification
+      run: |
+        python -c "from openapi_spec_validator import validate; import yaml; validate(yaml.safe_load(open('openapi.yaml')))"
+
+  contract-test:
+    name: API Contract Testing
+    runs-on: ubuntu-latest
+    needs: validate-openapi
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python 3.10
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.10'
+        cache: 'pip'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install schemathesis==3.36.5
+
+    - name: Start application server
+      run: |
+        python app/main.py serve --host 127.0.0.1 --port 5000 &
+        sleep 5
+
+    - name: Run contract tests against OpenAPI spec
+      run: |
+        schemathesis run openapi.yaml --base-url http://127.0.0.1:5000 --checks all --hypothesis-max-examples=20 --request-timeout=10000
+      continue-on-error: true
+
   test:
     name: Run Tests
     runs-on: ubuntu-latest
@@ -45,7 +99,7 @@ jobs:
   build-docker:
     name: Build Docker Image
     runs-on: ubuntu-latest
-    needs: test
+    needs: [validate-openapi, test]
     
     steps:
     - name: Checkout code

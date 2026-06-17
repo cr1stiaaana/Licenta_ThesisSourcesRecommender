@@ -9,6 +9,10 @@ Acest director conține toată documentația tehnică și diagramele pentru lucr
 | Fișier | Descriere |
 |--------|-----------|
 | `ARHITECTURA_SISTEM.md` | Arhitectura completă a sistemului cu diagrame Mermaid |
+| `BACKEND_ARCHITECTURE.md` | **Arhitectura backend detaliată** (componente, API, data flow, performanță) ⭐ |
+| `DATA_LAYER.md` | **Nivelul de date** (SQLite, FAISS, BM25, ER diagram, CRUD, scalabilitate) ⭐ |
+| `INTERFATA_APLICATIEI.md` | **Interfața aplicației** (layout, teme, i18n, accesibilitate, TypeScript) ⭐ |
+| `UTILIZARE_APLICATIE.md` | **Ghid de utilizare** (scenarii, pași, troubleshooting) ⭐ |
 | `DIAGRAME_TEHNOLOGII.md` | Stack tehnologic și vizualizări |
 | `API_DOCUMENTATION.md` | Documentația API-ului REST |
 | `AUTH_IMPLEMENTATION.md` | Implementarea autentificării |
@@ -19,6 +23,8 @@ Acest director conține toată documentația tehnică și diagramele pentru lucr
 |--------|-----------|
 | `SPEC_DRIVEN_DEVELOPMENT.md` | Metodologia Spec-Driven Development |
 | `NIVELURI_SPECIFICATII.md` | **Niveluri de Specificații în SDD (Requirements-First)** ⭐ |
+| `SPECIFICATII_PROIECT.md` | **Specificațiile concrete ale proiectului** (requirements, design, tasks, OpenAPI) ⭐ |
+| `TESTE_PERFORMANTA.md` | **Teste și Performanță** (unit, integration, property, CI/CD, GitHub Actions) ⭐ |
 | `CAPITOL_TEHNOLOGII.md` | Capitolul despre tehnologii pentru licență |
 
 ### Diagrame PlantUML
@@ -30,10 +36,18 @@ Acest director conține toată documentația tehnică și diagramele pentru lucr
 | `DIAGRAME_INDEX.md` | Index complet cu toate diagramele (Mermaid + PlantUML) |
 | `QUICK_START.md` | Ghid rapid pentru generarea diagramelor |
 
+### Mediu de Dezvoltare AI
+
+| Fișier | Descriere |
+|--------|-----------|
+| `KIRO_INTEGRATION.md` | **Integrarea Kiro în proiect** (steering, specs, MCP, hooks, powers) ⭐ |
+| `KIRO_POWERS.md` | **Kiro Powers** — extensii modulare, arhitectură, creare custom powers ⭐ |
+
 ### Altele
 
 | Fișier | Descriere |
 |--------|-----------|
+| `CONCLUZII_DIRECTII_VIITOARE.md` | **Concluzii și Direcții Viitoare** (limitări, 6 funcționalități propuse, viziune) ⭐ |
 | `FIXES_SUMMARY.md` | Rezumatul bug-urilor rezolvate |
 
 ## 🎨 Diagrame Disponibile
