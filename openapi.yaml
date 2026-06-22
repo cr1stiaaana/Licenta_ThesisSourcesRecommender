@@ -348,9 +348,9 @@ paths:
                 type: object
                 properties:
                   user:
-                    oneOf:
+                    allOf:
                       - $ref: '#/components/schemas/UserInfo'
-                      - type: "null"
+                    nullable: true
 
   /saved:
     get:
